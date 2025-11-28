@@ -8,3 +8,7 @@ test_data/for_resample_target/
 test_data/Tests/
 test/new/
 .venv
+julia-1.9.3/
+julia-1.9.3-linux-x86_64.tar.gz
+julia-1.10.3/
+julia-1.10.3-linux-x86_64.tar.gz
