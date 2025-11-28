@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MedImages.jl Architecture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            /* border: 1px solid #ccc; */
+        }
+        .box {
+            position: absolute;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .core {
+            background-color: #ffebee;
+            border: 2px solid #ef9a9a;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 60px;
+            z-index: 2;
+        }
+        .module {
+            background-color: #e3f2fd;
+            border: 2px solid #90caf9;
+            width: 180px;
+            height: 50px;
+            z-index: 2;
+        }
+        .io {
+            top: 200px;
+            left: 100px;
+        }
+        .basic {
+            top: 200px;
+            right: 100px;
+        }
+        .spatial {
+            top: 350px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+        }
+        .ext {
+            background-color: #e8f5e9;
+            border: 2px solid #a5d6a7;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 250px;
+            height: 50px;
+            z-index: 2;
+        }
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        line {
+            stroke: #666;
+            stroke-width: 2;
+            marker-end: url(#arrowhead);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="box core">MedImage_data_struct<br>(Core Data Structure)</div>
+
+        <div class="box module io">Load_and_save<br>(I/O Operations)</div>
+        <div class="box module basic">Basic_transformations<br>(Rotation, Crop, etc.)</div>
+
+        <div class="box module spatial">Spatial_metadata_change<br>(Resampling, Orientation)</div>
+
+        <div class="box ext">External Ecosystem<br>(SimpleITK via PyCall)</div>
+
+        <svg>
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+                </marker>
+            </defs>
+            <!-- Lines connecting boxes -->
+            <!-- IO to Core -->
+            <line x1="190" y1="200" x2="350" y2="110" />
+            <!-- Basic to Core -->
+            <line x1="610" y1="200" x2="450" y2="110" />
+            <!-- Spatial to Core -->
+            <line x1="400" y1="350" x2="400" y2="110" />
+            <!-- Spatial to External -->
+            <line x1="400" y1="400" x2="400" y2="500" />
+        </svg>
+    </div>
+</body>
+</html>
