@@ -1,0 +1,168 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{PalBhattacharya2024}
+S.~Pal, M.~Bhattacharya, S.~Dash, S.-S. Lee, C.~Chakraborty,
+  \href{http://dx.doi.org/10.1016/j.jare.2023.11.015}{A next-generation dynamic
+  programming language julia: Its features and applications in biological
+  science}, Journal of Advanced Research 64 (10 2024).
+\newblock \href {https://doi.org/10.1016/j.jare.2023.11.015}
+  {\path{doi:10.1016/j.jare.2023.11.015}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1016/j.jare.2023.11.015}
+
+\bibitem{BelyakovaChung2020}
+J.~Belyakova, B.~Chung, J.~Gelinas, J.~Nash, R.~Tate, J.~Vitek,
+  \href{https://arxiv.org/abs/2010.07516}{World age in julia: Optimizing method
+  dispatch in the presence of eval (extended version)}, arXiv (2020).
+\newblock \href {https://doi.org/10.48550/ARXIV.2010.07516}
+  {\path{doi:10.48550/ARXIV.2010.07516}}.
+\newline\urlprefix\url{https://arxiv.org/abs/2010.07516}
+
+\bibitem{AhnRoss2015}
+S.~Ahn, S.~G. Ross, E.~Asma, J.~Miao, X.~Jin, L.~Cheng, S.~D. Wollenweber,
+  R.~M. Manjeshwar,
+  \href{http://dx.doi.org/10.1088/0031-9155/60/15/5733}{Quantitative comparison
+  of osem and penalized likelihood image reconstruction using relative
+  difference penalties for clinical pet}, Physics in Medicine and Biology 60 (7
+  2015).
+\newblock \href {https://doi.org/10.1088/0031-9155/60/15/5733}
+  {\path{doi:10.1088/0031-9155/60/15/5733}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1088/0031-9155/60/15/5733}
+
+\bibitem{EschleGl2023}
+J.~Eschle, T.~Gál, M.~Giordano, P.~Gras, B.~Hegner, L.~Heinrich, U.~H. Acosta,
+  S.~Kluth, J.~Ling, P.~Mato, M.~Mikhasenko, A.~M. Briceño, J.~Pivarski,
+  K.~Samaras-Tsakiris, O.~Schulz, G.~A. Stewart, J.~Strube, V.~Vassilev,
+  \href{http://dx.doi.org/10.1007/s41781-023-00104-x}{Potential of the julia
+  programming language for high energy physics computing}, Computing and
+  Software for Big Science 7 (10 2023).
+\newblock \href {https://doi.org/10.1007/s41781-023-00104-x}
+  {\path{doi:10.1007/s41781-023-00104-x}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1007/s41781-023-00104-x}
+
+\bibitem{KnoppGrosser2021}
+T.~Knopp, M.~Grosser, \href{https://arxiv.org/abs/2101.12624}{Mrireco.jl: An
+  mri reconstruction framework written in julia}, arXiv (2021).
+\newblock \href {https://doi.org/10.48550/ARXIV.2101.12624}
+  {\path{doi:10.48550/ARXIV.2101.12624}}.
+\newline\urlprefix\url{https://arxiv.org/abs/2101.12624}
+
+\bibitem{BezansonChen2018}
+J.~Bezanson, J.~Chen, B.~Chung, S.~Karpinski, V.~B. Shah, J.~Vitek,
+  L.~Zoubritzky, \href{http://dx.doi.org/10.1145/3276490}{Julia: dynamism and
+  performance reconciled by design}, Proceedings of the ACM on Programming
+  Languages 2 (10 2018).
+\newblock \href {https://doi.org/10.1145/3276490} {\path{doi:10.1145/3276490}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1145/3276490}
+
+\bibitem{RoeschGreener2023}
+E.~Roesch, J.~G. Greener, A.~L. MacLean, H.~Nassar, C.~Rackauckas, T.~E. Holy,
+  M.~P.~H. Stumpf, \href{http://dx.doi.org/10.1038/s41592-023-01832-z}{Julia
+  for biologists}, Nature Methods 20 (4 2023).
+\newblock \href {https://doi.org/10.1038/s41592-023-01832-z}
+  {\path{doi:10.1038/s41592-023-01832-z}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1038/s41592-023-01832-z}
+
+\bibitem{HeideBerg2024}
+O.~van~der Heide, C.~A.~T. van~den Berg, A.~Sbrizzi,
+  \href{http://dx.doi.org/10.1002/mrm.30074}{Gpu‐accelerated bloch
+  simulations and mr‐stat reconstructions using the julia programming
+  language}, Magnetic Resonance in Medicine 92 (3 2024).
+\newblock \href {https://doi.org/10.1002/mrm.30074}
+  {\path{doi:10.1002/mrm.30074}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1002/mrm.30074}
+
+\bibitem{JaffrayWu2024}
+A.~Jaffray, Z.~Wu, S.~J. Vannesjo, K.~Uludağ, L.~Kasper,
+  \href{http://dx.doi.org/10.21105/joss.05877}{Girfreco.jl: An open-source
+  pipeline for spiral magnetic resonance image (mri) reconstruction in julia},
+  Journal of Open Source Software 9 (5 2024).
+\newblock \href {https://doi.org/10.21105/joss.05877}
+  {\path{doi:10.21105/joss.05877}}.
+\newline\urlprefix\url{http://dx.doi.org/10.21105/joss.05877}
+
+\bibitem{SiscoWang2021}
+N.~J. Sisco, P.~Wang, A.~Stokes, R.~Dortch,
+  \href{http://dx.doi.org/10.1101/2021.09.27.461996}{Rapid parameter estimation
+  for selective inversion recovery myelin imaging using an open-source julia
+  toolkit} (9 2021).
+\newblock \href {https://doi.org/10.1101/2021.09.27.461996}
+  {\path{doi:10.1101/2021.09.27.461996}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1101/2021.09.27.461996}
+
+\bibitem{SiscoWang2022}
+N.~J. Sisco, P.~Wang, A.~M. Stokes, R.~D. Dortch,
+  \href{http://dx.doi.org/10.7717/peerj.13043}{Rapid parameter estimation for
+  selective inversion recovery myelin imaging using an open-source julia
+  toolkit}, PeerJ 10 (3 2022).
+\newblock \href {https://doi.org/10.7717/peerj.13043}
+  {\path{doi:10.7717/peerj.13043}}.
+\newline\urlprefix\url{http://dx.doi.org/10.7717/peerj.13043}
+
+\bibitem{HofmannChesebro2023}
+D.~Hofmann, A.~G. Chesebro, C.~Rackauckas, L.~R. Mujica-Parodi, K.~J. Friston,
+  A.~Edelman, H.~H. Strey,
+  \href{http://dx.doi.org/10.1101/2023.10.27.564407}{Increasing spectral dcm
+  flexibility and speed by leveraging julia’s modelingtoolkit and automated
+  differentiation} (11 2023).
+\newblock \href {https://doi.org/10.1101/2023.10.27.564407}
+  {\path{doi:10.1101/2023.10.27.564407}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1101/2023.10.27.564407}
+
+\bibitem{BridgeGorman2022}
+C.~P. Bridge, C.~Gorman, S.~Pieper, S.~W. Doyle, J.~K. Lennerz,
+  J.~Kalpathy-Cramer, D.~A. Clunie, A.~Y. Fedorov, M.~D. Herrmann,
+  \href{http://dx.doi.org/10.1007/s10278-022-00683-y}{Highdicom: a python
+  library for standardized encoding of image annotations and machine learning
+  model outputs in pathology and radiology}, Journal of Digital Imaging 35 (8
+  2022).
+\newblock \href {https://doi.org/10.1007/s10278-022-00683-y}
+  {\path{doi:10.1007/s10278-022-00683-y}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1007/s10278-022-00683-y}
+
+\bibitem{YanivLowekamp2017}
+Z.~Yaniv, B.~C. Lowekamp, H.~J. Johnson, R.~Beare,
+  \href{http://dx.doi.org/10.1007/s10278-017-0037-8}{Simpleitk image-analysis
+  notebooks: a collaborative environment for education and reproducible
+  research}, Journal of Digital Imaging 31 (11 2017).
+\newblock \href {https://doi.org/10.1007/s10278-017-0037-8}
+  {\path{doi:10.1007/s10278-017-0037-8}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1007/s10278-017-0037-8}
+
+\bibitem{UnknownAuthor2011}
+\href{http://dx.doi.org/10.1007/978-3-642-22922-0}{Advances in spatial and
+  temporal databases}, Lecture Notes in Computer Science (2011).
+\newblock \href {https://doi.org/10.1007/978-3-642-22922-0}
+  {\path{doi:10.1007/978-3-642-22922-0}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1007/978-3-642-22922-0}
+
+\bibitem{SandkhlerJud2018}
+R.~Sandkühler, C.~Jud, S.~Andermatt, P.~C. Cattin,
+  \href{https://arxiv.org/abs/1806.09907}{Airlab: Autograd image registration
+  laboratory}, arXiv (2018).
+\newblock \href {https://doi.org/10.48550/ARXIV.1806.09907}
+  {\path{doi:10.48550/ARXIV.1806.09907}}.
+\newline\urlprefix\url{https://arxiv.org/abs/1806.09907}
+
+\bibitem{SchindelinRueden2015}
+J.~Schindelin, C.~T. Rueden, M.~C. Hiner, K.~W. Eliceiri,
+  \href{http://dx.doi.org/10.1002/mrd.22489}{The imagej ecosystem: An open
+  platform for biomedical image analysis}, Molecular Reproduction and
+  Development 82 (7 2015).
+\newblock \href {https://doi.org/10.1002/mrd.22489}
+  {\path{doi:10.1002/mrd.22489}}.
+\newline\urlprefix\url{http://dx.doi.org/10.1002/mrd.22489}
+
+\bibitem{LowekampChen2013}
+B.~C. Lowekamp, D.~T. Chen, L.~Ibáñez, D.~Blezek,
+  \href{http://dx.doi.org/10.3389/fninf.2013.00045}{The design of simpleitk},
+  Frontiers in Neuroinformatics 7 (2013).
+\newblock \href {https://doi.org/10.3389/fninf.2013.00045}
+  {\path{doi:10.3389/fninf.2013.00045}}.
+\newline\urlprefix\url{http://dx.doi.org/10.3389/fninf.2013.00045}
+
+\end{thebibliography}

@@ -1,0 +1,62 @@
+This is BibTeX, Version 0.99d (TeX Live 2023/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: elsarticle-num.bst
+Database file #1: bibl.bib
+Repeated entry---line 226 of file bibl.bib
+ : @article{KnoppGrosser2021
+ :                          ,
+I'm skipping whatever remains of this entry
+Repeated entry---line 268 of file bibl.bib
+ : @article{SchindelinRueden2015
+ :                              ,
+I'm skipping whatever remains of this entry
+Repeated entry---line 403 of file bibl.bib
+ : @article{BridgeGorman2022
+ :                          ,
+I'm skipping whatever remains of this entry
+Warning--empty journal in SiscoWang2021
+Warning--empty journal in HofmannChesebro2023
+Warning--empty author in UnknownAuthor2011
+You've used 18 entries,
+            2952 wiz_defined-function locations,
+            818 strings with 10678 characters,
+and the built_in function-call counts, 6020 in all, are:
+= -- 571
+> -- 321
+< -- 0
++ -- 119
+- -- 101
+* -- 519
+:= -- 968
+add.period$ -- 36
+call.type$ -- 18
+change.case$ -- 18
+chr.to.int$ -- 0
+cite$ -- 21
+duplicate$ -- 179
+empty$ -- 586
+format.name$ -- 118
+if$ -- 1522
+int.to.chr$ -- 0
+int.to.str$ -- 18
+missing$ -- 18
+newline$ -- 98
+num.names$ -- 17
+pop$ -- 104
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 341
+stack$ -- 0
+substring$ -- 0
+swap$ -- 72
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 0
+warning$ -- 3
+while$ -- 17
+width$ -- 20
+write$ -- 214
+(There were 3 error messages)
