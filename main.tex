@@ -41,6 +41,19 @@
 
 \lstset{style=mystyle}
 
+\lstdefinelanguage{Julia}%
+  {morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
+      end,export,false,for,function,immutable,import,importall,if,in,%
+      macro,module,otherwise,quote,return,switch,true,try,type,typealias,%
+      using,while},%
+   sensitive=true,%
+   morecomment=[l]{\#},%
+   morecomment=[n]{\#=}{=\#},%
+   morestring=[b]",%
+   morestring=[m]',%
+   morestring=[s]{`}{`}%
+  }[keywords,comments,strings]
+
 \begin{document}
 
 \begin{frontmatter}
@@ -137,6 +150,19 @@ println("Spacing: ", med_im.spacing)
 println("Direction: ", med_im.direction)
 \end{lstlisting}
 
+\subsection{Resampling an Image}
+Resampling is often necessary when registering images from different sources. MedImages.jl allows users to resample an image to a new voxel spacing while handling the interpolation of intensity values.
+
+\begin{lstlisting}[language=Julia]
+# Define target spacing (e.g., isotropic 1mm)
+new_spacing = (1.0, 1.0, 1.0)
+
+# Resample using linear interpolation
+resampled_im = MedImages.resample_to_spacing(med_im, new_spacing, MedImages.Linear_en)
+
+println("New Spacing: ", resampled_im.spacing)
+\end{lstlisting}
+
 \subsection{Rotating an Image}
 The following example shows how to rotate an image by 90 degrees around the Z-axis (axis 3). The function automatically handles interpolation and updates the direction matrix.
 
@@ -168,7 +194,20 @@ The package helps boost productivity by eliminating the need to switch between l
 By abstracting the complexities of the DICOM standard and spatial metadata math, MedImages.jl democratizes access to correct medical image processing. Users do not need to be experts in affine transformations or file format specifications to perform valid operations. This is crucial for interdisciplinary research where domain experts (e.g., biologists, clinicians) may not have deep software engineering expertise \cite{LowekampChen2013}.
 
 \subsection{Potential for New Methods}
-Julia's potential for medical imaging is significant, with libraries like MRIReco.jl and KomaMRI.jl already demonstrating performance comparable to C/C++ \cite{KnoppGrosser2021,HeideBerg2024}. MedImages.jl supports this ecosystem by providing the foundational data structures and I/O capabilities required to build advanced analysis pipelines, such as those involving automatic differentiation or machine learning integration \cite{SiscoWang2022}.
+Julia's potential for medical imaging is significant, with libraries like MRIReco.jl and KomaMRI.jl already demonstrating performance comparable to C/C++ \cite{KnoppGrosser2021,HeideBerg2024}. For instance, a Julia-based toolkit for Selective Inversion Recovery (SIR) MRI parameter estimation showed a 20-fold reduction in computational time compared to a previous MATLAB implementation \cite{SiscoWang2022}. MedImages.jl supports this ecosystem by providing the foundational data structures and I/O capabilities required to build advanced analysis pipelines, such as those involving automatic differentiation or machine learning integration.
+
+\section{Discussion and Future Work}
+
+MedImages.jl fills a critical gap in the Julia ecosystem by providing a native, high-performance tool for medical image manipulation. While wrappers for ITK exist, a pure Julia implementation offers better integration with other Julia packages, such as \texttt{DifferentialEquations.jl} or \texttt{Flux.jl}, allowing for end-to-end differentiable pipelines.
+
+One of the key advantages of MedImages.jl is its lightweight nature compared to heavy dependencies. By implementing core functionalities in native Julia, it allows for easier deployment. Furthermore, the potential for GPU acceleration using Julia's \texttt{CUDA.jl} or \texttt{AMDGPU.jl} packages is a significant area for future development. The \texttt{MedImage} struct is designed with this in mind, with a \texttt{current\_device} field to track where the data resides.
+
+Future work will focus on:
+\begin{itemize}
+    \item \textbf{GPU Integration:} Fully leveraging Julia's GPU capabilities for resampling and transformation operations.
+    \item \textbf{Advanced Registration:} Implementing intensity-based registration algorithms natively in Julia.
+    \item \textbf{Deep Learning Integration:} Creating seamless bridges to \texttt{Flux.jl} and \texttt{Lux.jl} for medical image segmentation and reconstruction tasks.
+\end{itemize}
 
 \section{Conclusions}
 
