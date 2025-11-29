@@ -8,6 +8,7 @@ using ..Brute_force_orientation
 using ..Utils
 export load_image
 export update_voxel_and_spatial_data
+export update_voxel_data
 
 """
 helper function for dicom #2

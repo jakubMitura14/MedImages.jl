@@ -29,7 +29,7 @@ include("Load_and_save.jl")
 include("Basic_transformations.jl")
 include("Spatial_metadata_change.jl")
 include("Resample_to_target.jl")
-# include("HDF5_manag.jl")
+include("HDF5_manag.jl")
 
 # Re-export functions from submodules
 using .Load_and_save: load_image, update_voxel_and_spatial_data, create_nii_from_medimage
@@ -42,6 +42,6 @@ using .Resample_to_target: resample_to_image
 using .Basic_transformations: rotate_mi, crop_mi, pad_mi, translate_mi, scale_mi
 
 # Make HDF5 functions available (they're not in a module)
-# export save_med_image, load_med_image
+export save_med_image, load_med_image
 
 end #MedImages

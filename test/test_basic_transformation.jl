@@ -94,7 +94,9 @@ end
 # Cropping tests
 function sitk_crop(sitk_image, beginning, size)
     sitk = pyimport("SimpleITK")
-    return sitk.RegionOfInterest(sitk_image, [size[1], size[2], size[3]], [beginning[1], beginning[2], beginning[3]])
+    py_size = PyObject([Int(size[1]), Int(size[2]), Int(size[3])])
+    py_index = PyObject([Int(beginning[1]), Int(beginning[2]), Int(beginning[3])])
+    return sitk.RegionOfInterest(sitk_image, py_size, py_index)
 end
 
 function test_crops_suite(path_nifti, debug_folder_path)
@@ -126,8 +128,10 @@ function sitk_pad(sitk_image, pad_beg, pad_end, pad_val)
     sitk = pyimport("SimpleITK")
     extract = sitk.ConstantPadImageFilter()
     extract.SetConstant(pad_val)
-    extract.SetPadLowerBound(pad_beg)
-    extract.SetPadUpperBound(pad_end)
+    py_pad_beg = PyObject([Int(pad_beg[1]), Int(pad_beg[2]), Int(pad_beg[3])])
+    py_pad_end = PyObject([Int(pad_end[1]), Int(pad_end[2]), Int(pad_end[3])])
+    extract.SetPadLowerBound(py_pad_beg)
+    extract.SetPadUpperBound(py_pad_end)
     return extract.Execute(sitk_image)
 end
 
@@ -160,8 +164,8 @@ end
 # Translation tests
 function sitk_translate(image, translate_by, translate_in_axis)
     sitk = pyimport("SimpleITK")
-    translatee = [0, 0, 0]
-    translatee[translate_in_axis] = translate_by
+    translatee = [0.0, 0.0, 0.0]
+    translatee[translate_in_axis] = Float64(translate_by)
     transform = sitk.TranslationTransform(3, translatee)
     return sitk.TransformGeometry(image, transform)
 end
