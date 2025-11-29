@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedImages.jl Architecture</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            justify_content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            width: 800px;
+            height: 600px;
+            position: relative;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .struct-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            z-index: 10;
+        }
+        .struct-title {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #0d47a1;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #90caf9;
+            padding-bottom: 5px;
+        }
+        .field-list {
+            text-align: left;
+            font-size: 0.9em;
+            color: #1565c0;
+            line-height: 1.4;
+        }
+        .module-box {
+            position: absolute;
+            width: 180px;
+            background-color: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            color: #e65100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .module-func {
+            font-size: 0.8em;
+            color: #ef6c00;
+            margin-top: 5px;
+            font-weight: normal;
+        }
+        /* Positioning modules */
+        .mod-load { top: 50px; left: 50px; }
+        .mod-basic { top: 50px; right: 50px; }
+        .mod-spatial { bottom: 50px; left: 50px; }
+        .mod-resample { bottom: 50px; right: 50px; }
+        .mod-utils { top: 50%; right: -20px; transform: translateY(-50%); width: 100px; }
+
+        /* Arrows */
+        .arrow {
+            position: absolute;
+            border: 1px dashed #bdbdbd;
+            z-index: 1;
+        }
+
+        .arrow-tl { top: 120px; left: 150px; width: 150px; height: 120px; border-bottom: none; border-right: none; border-top: 2px solid #ff9800; border-left: 2px solid #ff9800; transform: skew(20deg); }
+        /* Simple lines for now */
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        line {
+            stroke: #ffb74d;
+            stroke-width: 2;
+            marker-end: url(#arrowhead);
+        }
+        .title {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">MedImages.jl Architecture</div>
+
+        <!-- Central Struct -->
+        <div class="struct-box">
+            <div class="struct-title">struct MedImage</div>
+            <div class="field-list">
+                • voxel_data<br>
+                • origin<br>
+                • spacing<br>
+                • direction<br>
+                • image_type<br>
+                • image_subtype<br>
+                • clinical_data<br>
+                • metadata
+            </div>
+        </div>
+
+        <!-- Modules -->
+        <div class="module-box mod-load">
+            Load_and_save
+            <div class="module-func">load_image<br>save_med_image<br>create_nii_from_medimage</div>
+        </div>
+
+        <div class="module-box mod-basic">
+            Basic_transformations
+            <div class="module-func">rotate_mi<br>crop_mi<br>pad_mi<br>translate_mi</div>
+        </div>
+
+        <div class="module-box mod-spatial">
+            Spatial_metadata_change
+            <div class="module-func">resample_to_spacing<br>change_orientation</div>
+        </div>
+
+        <div class="module-box mod-resample">
+            Resample_to_target
+            <div class="module-func">resample_to_image</div>
+        </div>
+
+        <!-- SVG Arrows -->
+        <svg>
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#ffb74d" />
+                </marker>
+            </defs>
+            <!-- From Load to Struct -->
+            <line x1="230" y1="120" x2="350" y2="250" />
+            <!-- From Struct to Basic -->
+            <line x1="530" y1="250" x2="650" y2="120" />
+            <!-- From Struct to Spatial -->
+            <line x1="350" y1="350" x2="230" y2="480" />
+            <!-- From Struct to Resample -->
+            <line x1="530" y1="350" x2="650" y2="480" />
+        </svg>
+    </div>
+</body>
+</html>

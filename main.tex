@@ -1,0 +1,212 @@
+\documentclass[a4paper,10pt,3p]{elsarticle}
+
+\usepackage{lineno,hyperref}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\modulolinenumbers[5]
+
+\journal{SoftwareX}
+
+%% BibTeX style
+\bibliographystyle{elsarticle-num}
+
+%% Code listing style
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{MedImages.jl: A Julia Package for Standardized Medical Image Processing with Spatial Metadata Handling}
+
+\author[1]{Jakub Mitura\corref{cor1}}
+\ead{jakub.mitura@gmail.com}
+
+\author[1]{Divyansh Goyal}
+\ead{divital2004@gmail.com}
+
+\cortext[cor1]{Corresponding author}
+
+\address[1]{Department of Computer Science, AGH University of Science and Technology, Krakow, Poland}
+
+\begin{abstract}
+MedImages.jl is an open-source Julia package designed to address the complexities of medical image processing, specifically focusing on the rigorous handling of spatial metadata (origin, spacing, direction) and the integration of high-performance computing capabilities. Leveraging Julia's "two-language problem" solution, the package provides a unified, high-performance environment for manipulating medical images (MRI, CT, PET) while maintaining critical spatial context often lost in other frameworks. It offers a standardized `MedImage` structure, interoperability with Python (via SimpleITK), and a suite of transformation tools. This article describes the software's architecture, its potential to democratize access to advanced medical imaging tools, and its role in boosting researcher productivity by simplifying complex workflows.
+\end{abstract}
+
+\begin{keyword}
+Medical Imaging \sep Julia \sep Spatial Metadata \sep MRI \sep Open Source \sep Scientific Computing
+\end{keyword}
+
+\end{frontmatter}
+
+% \linenumbers
+
+\section{Motivation and Significance}
+
+Medical imaging is a cornerstone of modern healthcare and research, but the analysis and processing of medical images present significant computational and structural challenges. The primary difficulties stem from the complexity of standardized formats like DICOM and the necessity of maintaining precise spatial relationships between image data and physical anatomy \cite{BridgeGorman2022,YanivLowekamp2017}.
+
+\subsection{The Challenge of Medical Imaging Formats}
+Medical images differ from standard photographic images in that they require extensive metadata to define their physical location and orientation in space. Critical attributes such as \textit{origin} (the physical coordinates of the first voxel), \textit{spacing} (the physical distance between voxels), and \textit{direction} (the orientation of the axes) must be preserved during processing to ensure that clinical measurements and multi-modal registrations remain valid \cite{YanivLowekamp2017,BeareLowekamp2018}. Ignoring this spatial metadata can lead to invalid operations, such as adding two images that do not occupy the same physical space \cite{YanivLowekamp2017}.
+
+Furthermore, the ubiquity of the DICOM standard, while essential for interoperability, introduces "porous metadata requirements" and elaborate structures that are often difficult for researchers to navigate \cite{BridgeGorman2022}. The conversion of DICOM to simpler formats often results in the loss of context \cite{BridgeGorman2022}, and the lack of a universal coordinate system for the human body complicates registration and analysis \cite{UnknownAuthor2011}.
+
+\subsection{How Julia Helps in Scientific Computing}
+Julia is a high-level, dynamic programming language designed to solve the "two-language problem"—the need to prototype in a high-productivity language (like Python or MATLAB) and rewrite performance-critical code in a low-level language (like C++) \cite{PalBhattacharya2024,BezansonChen2018}. Julia combines the ease of use of Python with performance comparable to C/C++ \cite{SiscoWang2022,AhnRoss2015}.
+
+In the context of medical imaging, Julia's potential is significant:
+\begin{itemize}
+    \item \textbf{Performance}: It enables high-speed image reconstruction (e.g., MRI) and simulation, often achieving orders of magnitude speedups over legacy implementations \cite{SiscoWang2022,HeideBerg2024}.
+    \item \textbf{Interoperability}: Through packages like \texttt{PyCall.jl}, Julia can seamlessly integrate with established libraries like SimpleITK, allowing researchers to leverage existing tools while benefiting from Julia's performance for new algorithms \cite{KnoppGrosser2021}.
+    \item \textbf{Multiple Dispatch}: This feature solves the "expression problem," allowing developers to easily extend existing functions to new data types without modifying the original code, which is crucial for handling diverse medical image modalities \cite{PalBhattacharya2024,RoeschGreener2023}.
+\end{itemize}
+
+\subsection{Democratizing Access and Boosting Productivity}
+Open-source libraries like MedImages.jl help democratize access to medical image processing by abstracting the complexities of DICOM and spatial metadata \cite{LowekampChen2013}. By providing a standardized, easy-to-use interface, they lower the barrier to entry for researchers who may not be experts in C++ or low-level file formats \cite{BridgeGorman2022}. This standardization ensures reproducibility, fosters collaboration, and accelerates the transition from research to clinical deployment \cite{SchindelinRueden2015,KnoppGrosser2021}.
+
+\section{Software Description}
+
+MedImages.jl is designed to be a comprehensive tool for loading, manipulating, and saving medical images while rigorously preserving spatial metadata.
+
+\subsection{Architecture}
+The core of the package is the \texttt{MedImage} struct, which encapsulates the voxel data alongside its critical metadata. The architecture is modular, with specific components handling I/O, transformations, and spatial metadata updates.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/architecture.png}
+    \caption{Architecture of MedImages.jl, showing the central \texttt{MedImage} struct and the modules that interact with it for loading, saving, and transforming data.}
+    \label{fig:architecture}
+\end{figure}
+
+The \texttt{MedImage} struct (Figure \ref{fig:architecture}) includes fields for:
+\begin{itemize}
+    \item \texttt{voxel\_data}: The multidimensional array of image intensities.
+    \item \texttt{origin}: A tuple defining the physical start point (x, y, z).
+    \item \texttt{spacing}: A tuple defining the voxel size (x, y, z).
+    \item \texttt{direction}: A tuple (direction cosines) defining the orientation.
+    \item \texttt{clinical\_data} and \texttt{metadata}: Dictionaries for patient and study information.
+\end{itemize}
+
+\subsection{Key Functionalities}
+\begin{itemize}
+    \item \textbf{I/O Operations}: Leveraging \texttt{PyCall} and \texttt{SimpleITK}, the package can load and save a wide variety of medical image formats (NIfTI, DICOM, etc.) into the standardized \texttt{MedImage} structure.
+    \item \textbf{Spatial Metadata Handling}: Functions like \texttt{resample\_to\_spacing} and \texttt{change\_orientation} allow users to modify the spatial properties of images while ensuring that the underlying voxel data is correctly interpolated and aligned.
+    \item \textbf{Basic Transformations}: Includes rotation, cropping, padding, and translation, all while maintaining the integrity of the spatial metadata.
+    \item \textbf{Resampling}: The \texttt{resample\_to\_image} function allows for the alignment of one image to the grid of another, a fundamental step in image registration and multi-modal analysis.
+\end{itemize}
+
+\section{Illustrative Examples}
+
+Here we demonstrate how MedImages.jl simplifies common tasks in medical image analysis.
+
+\subsection{Loading and Inspecting an Image}
+\begin{lstlisting}[language=Julia]
+using MedImages
+
+# Load an MRI scan
+image = load_image("path/to/mri.nii.gz")
+
+# Inspect spatial metadata
+println("Origin: ", image.origin)
+println("Spacing: ", image.spacing)
+println("Direction: ", image.direction)
+
+# Access voxel data
+data = image.voxel_data
+\end{lstlisting}
+
+\subsection{Resampling to Isotropic Spacing}
+A common preprocessing step is to resample an image to isotropic resolution (e.g., 1x1x1 mm).
+\begin{lstlisting}[language=Julia]
+# Resample to 1.0mm isotropic spacing
+new_spacing = (1.0, 1.0, 1.0)
+resampled_image = resample_to_spacing(image, new_spacing, MedImages.Linear_en)
+
+# Save the result
+save_med_image(resampled_image, "path/to/resampled_mri.nii.gz")
+\end{lstlisting}
+
+\subsection{Changing Orientation}
+Standardizing image orientation (e.g., to RAS - Right-Anterior-Superior) is crucial for deep learning pipelines.
+\begin{lstlisting}[language=Julia]
+# Change orientation to RAS
+ras_image = change_orientation(image, MedImages.ORIENTATION_RAS)
+\end{lstlisting}
+
+\section{Impact}
+
+MedImages.jl contributes to the medical imaging community by providing a native Julia solution that:
+\begin{enumerate}
+    \item \textbf{Enhances Performance}: By utilizing Julia, researchers can implement custom processing algorithms that run at speeds comparable to C++, without the complexity of C++ development \cite{KnoppGrosser2021}.
+    \item \textbf{Simplifies Workflows}: It provides a unified interface for handling spatial metadata, reducing the risk of errors associated with manual coordinate transformations \cite{YanivLowekamp2017}.
+    \item \textbf{Facilitates Reproducibility}: As an open-source tool, it enables transparent and reproducible research pipelines, essential for scientific integrity \cite{SchindelinRueden2015}.
+\end{enumerate}
+
+The package serves as a bridge, allowing the Julia community to leverage the vast ecosystem of ITK/SimpleITK while building the next generation of high-performance medical imaging tools.
+
+\section{Conclusions}
+
+MedImages.jl addresses the critical need for standardized, high-performance tools in medical image analysis. By solving the two-language problem and rigorously handling spatial metadata, it empowers researchers to develop more efficient and reproducible workflows. As the Julia ecosystem for medical imaging grows, tools like MedImages.jl will play a pivotal role in democratizing access to advanced computational methods.
+
+\section*{Acknowledgements}
+We acknowledge the Julia community and the developers of SimpleITK, whose work forms the foundation for this package.
+
+\section*{Conflict of Interest}
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\section*{Current Code Version}
+\label{sec:code_metadata}
+
+\begin{table}[!h]
+\begin{tabular}{|l|p{6.5cm}|p{6.5cm}|}
+\hline
+\textbf{Nr.} & \textbf{Code metadata description} & \textbf{Please fill in this column} \\
+\hline
+C1 & Current code version & v2.0.1 \\
+\hline
+C2 & Permanent link to code/repository used for this code version & https://github.com/JakubMitura14/MedImages.jl \\
+\hline
+C3 & Legal Code License & Apache License 2.0 \\
+\hline
+C4 & Code versioning system used & git \\
+\hline
+C5 & Software code languages, tools, and services used & Julia, Python, SimpleITK \\
+\hline
+C6 & Compilation requirements, operating environments & Julia 1.10.3 or higher \\
+\hline
+C7 & If available Link to developer documentation/manual & Included in repository \\
+\hline
+C8 & Support email for questions & jakub.mitura@gmail.com \\
+\hline
+\end{tabular}
+\caption{Code metadata}
+\end{table}
+
+\bibliography{bibl}
+
+\end{document}
