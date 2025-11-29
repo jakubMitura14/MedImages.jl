@@ -9,6 +9,7 @@ export interpolate_my
 export TransformIndexToPhysicalPoint_julia
 export ensure_tuple
 export create_nii_from_medimage
+export resample_kernel_launch
 import ..MedImage_data_struct: MedImage, Interpolator_enum, Mode_mi, Orientation_code, Nearest_neighbour_en, Linear_en, B_spline_en
 
 
@@ -527,5 +528,99 @@ end
 # print(image.GetSpacing())
 # print(image.GetDirection())
 
+@kernel function trilinear_resample_kernel(output, @Const(image_data), @Const(old_spacing), @Const(new_spacing), @Const(new_dims))
+    i = @index(Global, Linear)
+
+    # Map linear index to x,y,z (1-based)
+    stride_z = new_dims[1] * new_dims[2]
+    iz = (i - 1) ÷ stride_z + 1
+    rem_z = (i - 1) % stride_z
+    iy = rem_z ÷ new_dims[1] + 1
+    ix = rem_z % new_dims[1] + 1
+
+    # Map to source index space
+    real_x = (Float32(ix) - 1.0f0) * (Float32(new_spacing[1]) / Float32(old_spacing[1])) + 1.0f0
+    real_y = (Float32(iy) - 1.0f0) * (Float32(new_spacing[2]) / Float32(old_spacing[2])) + 1.0f0
+    real_z = (Float32(iz) - 1.0f0) * (Float32(new_spacing[3]) / Float32(old_spacing[3])) + 1.0f0
+
+    # Bounds checking
+    sx, sy, sz = size(image_data)
+    if real_x < 1.0f0 || real_y < 1.0f0 || real_z < 1.0f0 || real_x > Float32(sx) || real_y > Float32(sy) || real_z > Float32(sz)
+        output[i] = 0 # Extrapolation value 0
+    else
+        x0 = floor(Int, real_x)
+        y0 = floor(Int, real_y)
+        z0 = floor(Int, real_z)
+
+        # Clamp upper bounds
+        x1 = min(x0 + 1, sx)
+        y1 = min(y0 + 1, sy)
+        z1 = min(z0 + 1, sz)
+
+        xd = real_x - x0
+        yd = real_y - y0
+        zd = real_z - z0
+
+        # Inline Interpolation with @inbounds
+        @inbounds begin
+            c00 = Float32(image_data[x0, y0, z0]) * (1.0f0 - xd) + Float32(image_data[x1, y0, z0]) * xd
+            c10 = Float32(image_data[x0, y1, z0]) * (1.0f0 - xd) + Float32(image_data[x1, y1, z0]) * xd
+            c01 = Float32(image_data[x0, y0, z1]) * (1.0f0 - xd) + Float32(image_data[x1, y0, z1]) * xd
+            c11 = Float32(image_data[x0, y1, z1]) * (1.0f0 - xd) + Float32(image_data[x1, y1, z1]) * xd
+
+            c0 = c00 * (1.0f0 - yd) + c10 * yd
+            c1 = c01 * (1.0f0 - yd) + c11 * yd
+
+            output[i] = c0 * (1.0f0 - zd) + c1 * zd
+        end
+    end
+end
+
+@kernel function nearest_resample_kernel(output, @Const(image_data), @Const(old_spacing), @Const(new_spacing), @Const(new_dims))
+    i = @index(Global, Linear)
+
+    iz = (i - 1) ÷ (new_dims[1] * new_dims[2]) + 1
+    rem_z = (i - 1) % (new_dims[1] * new_dims[2])
+    iy = rem_z ÷ new_dims[1] + 1
+    ix = rem_z % new_dims[1] + 1
+
+    real_x = (Float32(ix) - 1.0f0) * (Float32(new_spacing[1]) / Float32(old_spacing[1])) + 1.0f0
+    real_y = (Float32(iy) - 1.0f0) * (Float32(new_spacing[2]) / Float32(old_spacing[2])) + 1.0f0
+    real_z = (Float32(iz) - 1.0f0) * (Float32(new_spacing[3]) / Float32(old_spacing[3])) + 1.0f0
+
+    src_size = size(image_data)
+
+    # Nearest neighbor rounding
+    nx = Int(round(real_x))
+    ny = Int(round(real_y))
+    nz = Int(round(real_z))
+
+    if nx < 1 || ny < 1 || nz < 1 || nx > src_size[1] || ny > src_size[2] || nz > src_size[3]
+        output[i] = 0
+    else
+        output[i] = image_data[nx, ny, nz]
+    end
+end
+
+function resample_kernel_launch(image_data, old_spacing, new_spacing, new_dims, interpolator_enum)
+    # Output array
+    output = similar(image_data, new_dims)
+
+    # Select backend
+    backend = get_backend(output)
+
+    # Select kernel
+    if interpolator_enum == Nearest_neighbour_en
+        kernel = nearest_resample_kernel(backend, 256)
+    else
+        kernel = trilinear_resample_kernel(backend, 256)
+    end
+
+    # Launch
+    kernel(output, image_data, old_spacing, new_spacing, new_dims, ndrange=prod(new_dims))
+    synchronize(backend)
+
+    return output
+end
 
 end#Utils
