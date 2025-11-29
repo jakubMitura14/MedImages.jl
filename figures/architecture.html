@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    padding: 20px;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    width: 800px;
+  }
+  .box {
+    border: 2px solid #333;
+    padding: 15px 25px;
+    border-radius: 8px;
+    background-color: #e0f7fa;
+    text-align: center;
+    font-weight: bold;
+    min-width: 150px;
+  }
+  .medimage {
+    background-color: #fff9c4;
+    border: 3px solid #fbc02d;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .medimage-title {
+    font-size: 1.2em;
+    border-bottom: 2px solid #fbc02d;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+  }
+  .medimage-content {
+    display: flex;
+    gap: 20px;
+    justify-content: space-around;
+  }
+  .field {
+    background-color: #ffffff;
+    border: 1px dashed #fbc02d;
+    padding: 8px;
+    font-size: 0.9em;
+  }
+  .arrow {
+    font-size: 2em;
+    color: #555;
+  }
+  .row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .backend {
+    background-color: #e1bee7;
+    border-color: #8e24aa;
+  }
+  .transform {
+    background-color: #c8e6c9;
+    border-color: #388e3c;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Input -->
+  <div class="box">Medical Image Files<br>(NIfTI, DICOM)</div>
+
+  <div class="arrow">↓</div>
+
+  <!-- Load -->
+  <div class="box">load_image()</div>
+
+  <div class="arrow">↓</div>
+
+  <!-- MedImage Struct -->
+  <div class="box medimage">
+    <div class="medimage-title">MedImage Struct</div>
+    <div class="medimage-content">
+      <div class="field">Voxel Data<br>(Multi-dim Array)</div>
+      <div class="field">Spatial Metadata<br>(Origin, Spacing, Direction)</div>
+      <div class="field">Metadata<br>(Dictionaries)</div>
+    </div>
+  </div>
+
+  <div class="arrow">↕</div>
+
+  <!-- Operations Row -->
+  <div class="row">
+    <div class="box transform">Transformations<br>(Rotate, Crop, Resample)</div>
+    <div class="arrow">↔</div>
+    <div class="box backend">Backend Integration<br>(PyCall.jl ↔ SimpleITK)</div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <!-- Save -->
+  <div class="box">save_med_image()</div>
+
+  <div class="arrow">↓</div>
+
+  <!-- Output -->
+  <div class="box">Processed Image Files</div>
+</div>
+
+</body>
+</html>
