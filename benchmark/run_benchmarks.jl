@@ -12,6 +12,14 @@ catch
     false
 end
 
+# Check for CUDA
+const HAS_CUDA = try
+    using CUDA
+    CUDA.functional()
+catch
+    false
+end
+
 # Define paths
 const BENCHMARK_DIR = @__DIR__
 const TEST_DATA_DIR = joinpath(BENCHMARK_DIR, "..", "test_data")
@@ -132,6 +140,23 @@ function run_benchmarks()
     t_res_mi, _ = run_manual_benchmark("Resampling", MedImages.resample_to_spacing, mi_img, new_spacing, MedImages.Linear_en)
     t_res_sitk, _ = run_manual_benchmark("Resampling", resample_sitk, sitk_img, new_spacing)
     print_result("Resampling", t_res_mi, t_res_sitk)
+
+    if HAS_CUDA
+        println("\nRunning GPU benchmarks...")
+        # Prepare GPU image
+        mi_img_gpu = deepcopy(mi_img)
+        mi_img_gpu.voxel_data = CuArray(mi_img.voxel_data)
+
+        # Warmup and run
+        t_res_gpu, _ = run_manual_benchmark("Resampling (GPU)", MedImages.resample_to_spacing, mi_img_gpu, new_spacing, MedImages.Linear_en)
+        @printf("%-20s | %10.4f s | %10s | %s\n", "Resampling (GPU)", t_res_gpu, "N/A", "N/A")
+
+        # Calculate speedup vs CPU
+        speedup = t_res_mi / t_res_gpu
+        println("GPU Speedup vs Native CPU: $(round(speedup, digits=2))x")
+    else
+        println("\nGPU not available, skipping GPU benchmarks.")
+    end
 
     println("----------------------------------------------------------------")
     println("Note: Lower time is better. Ratio < 1.0 means MedImages is faster.")

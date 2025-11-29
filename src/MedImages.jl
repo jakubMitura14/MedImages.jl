@@ -12,7 +12,7 @@ export Utils
 # Export key functions that tests need
 export load_image, update_voxel_and_spatial_data, create_nii_from_medimage
 export save_med_image, load_med_image
-export test_object_equality, resample_to_spacing, change_orientation
+export resample_to_spacing, change_orientation
 export resample_to_image, rotate_mi, crop_mi, pad_mi, translate_mi, scale_mi
 export string_to_orientation_enum, orientation_enum_to_string
 
@@ -32,6 +32,7 @@ include("Resample_to_target.jl")
 include("HDF5_manag.jl")
 
 # Re-export functions from submodules
+using .Utils
 using .Load_and_save: load_image, update_voxel_and_spatial_data, create_nii_from_medimage
 using .MedImage_data_struct: MedImage, Image_type, Image_subtype, current_device_enum
 using .MedImage_data_struct: Interpolator_enum, Mode_mi, Orientation_code
