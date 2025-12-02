@@ -82,7 +82,7 @@ function test_rotation_suite(path_nifti, debug_folder_path)
                         
                         # Our Julia implementation using MedImages API
                         med_im_rotated = MedImages.rotate_mi(med_im, ax, theta, MedImages.Linear_en)
-                        MedImages.test_object_equality(med_im_rotated, rotated_sitk)
+                        test_object_equality(med_im_rotated, rotated_sitk)
                         true
                     end
                 end
@@ -112,7 +112,7 @@ function test_crops_suite(path_nifti, debug_folder_path)
                         sitk.WriteImage(cropped_sitk, "$(debug_folder_path)/cropped_$(beginning)_$(size).nii.gz")
                         
                         medIm_cropped = MedImages.crop_mi([med_im], beginning, size, MedImages.Linear_en)[1]
-                        MedImages.test_object_equality(medIm_cropped, cropped_sitk)
+                        test_object_equality(medIm_cropped, cropped_sitk)
                         true
                     end
                 end
@@ -147,7 +147,7 @@ function test_pads_suite(path_nifti, debug_folder_path)
                             sitk.WriteImage(sitk_padded, "$(debug_folder_path)/padded_$(pad_beg)_$(pad_end)_$(pad_val).nii.gz")
                             
                             mi_padded = MedImages.pad_mi(med_im, pad_beg, pad_end, pad_val, MedImages.Linear_en)
-                            MedImages.test_object_equality(mi_padded, sitk_padded)
+                            test_object_equality(mi_padded, sitk_padded)
                             true
                         end
                     end
@@ -181,7 +181,7 @@ function test_translate_suite(path_nifti, debug_folder_path)
                         sitk.WriteImage(sitk_translated, "$(debug_folder_path)/translated_$(t_val)_$(axis).nii.gz")
                         
                         medIm_translated = MedImages.translate_mi(med_im, t_val, axis, MedImages.Linear_en)
-                        MedImages.test_object_equality(medIm_translated, sitk_translated)
+                        test_object_equality(medIm_translated, sitk_translated)
                         true
                     end
                 end
@@ -211,7 +211,7 @@ function test_scale_suite(path_nifti, debug_folder_path)
                     sitk.WriteImage(sitk_scaled, "$(debug_folder_path)/scaled_$(zoom).nii.gz")
                     
                     medIm_scaled = MedImages.scale_mi(med_im, zoom, MedImages.Linear_en)
-                    MedImages.test_object_equality(medIm_scaled, sitk_scaled)
+                    test_object_equality(medIm_scaled, sitk_scaled)
                     true
                 end
             end

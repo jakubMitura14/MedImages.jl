@@ -8,7 +8,6 @@ export cast_to_array_b_type
 export interpolate_my
 export TransformIndexToPhysicalPoint_julia
 export ensure_tuple
-export create_nii_from_medimage
 import ..MedImage_data_struct: MedImage, Interpolator_enum, Mode_mi, Orientation_code, Nearest_neighbour_en, Linear_en, B_spline_en
 
 
@@ -471,25 +470,6 @@ end
 #       )
 #     return med_image
 # end
-
-
-"""
-create_nii_from_medimage(med_image::MedImage, file_path::String)
-
-Create a .nii.gz file from a MedImage object and save it to the given file path.
-"""
-function create_nii_from_medimage(med_image::MedImage, file_path::String)
-    sitk = pyimport("SimpleITK")
-    np = pyimport("numpy")
-    voxel_data_np = np.array(med_image.voxel_data)
-
-    image_sitk = sitk.GetImageFromArray(voxel_data_np)
-    image_sitk.SetOrigin(med_image.origin)
-    image_sitk.SetSpacing(med_image.spacing)
-    image_sitk.SetDirection(med_image.direction)
-
-    sitk.WriteImage(image_sitk, file_path * ".nii.gz")
-end
 
 
 # function update_voxel_data(old_image::MedImage, new_voxel_data::AbstractArray)

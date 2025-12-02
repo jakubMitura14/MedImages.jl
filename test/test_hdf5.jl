@@ -8,7 +8,7 @@ function test_hdf5_suite()
         # Test data path
         test_data_dir = joinpath(dirname(@__FILE__), "..", "test_data")
         path_nifti = joinpath(test_data_dir, "volume-0.nii.gz")
-        h5_path = joinpath(test_data_dir, "debug.h5")
+        h5_path = tempname() * ".h5"
         
         @testset "HDF5 Save and Load" begin
             @test begin

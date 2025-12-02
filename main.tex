@@ -70,11 +70,11 @@
 \address[1]{JuliaHealth}
 
 \begin{abstract}
-MedImages.jl is a Julia package designed to address the complexities of medical imaging data handling, specifically focusing on the challenges of spatial metadata (origin, spacing, direction) and the integration of high-performance computing with ease of use. Leveraging the Julia programming language's capabilities and integrating with the robust SimpleITK library via PyCall, MedImages.jl provides a standardized \texttt{MedImage} structure that encapsulates voxel data alongside its critical spatial context. This article describes the software's architecture, which bridges the gap between the flexible, high-level syntax of Julia and established low-level medical imaging standards. We demonstrate how MedImages.jl simplifies common tasks such as loading, transforming, and saving medical images (NIfTI, DICOM) while ensuring spatial consistency. The package aims to democratize access to medical image processing by providing a performant, open-source tool that boosts researcher productivity and facilitates reproducible science.
+MedImages.jl is a Julia package designed to address the complexities of medical imaging data handling, specifically focusing on the challenges of spatial metadata (origin, spacing, direction) and the integration of high-performance computing with ease of use. Unlike existing wrappers that rely heavily on Python bindings, MedImages.jl leverages native Julia libraries for core spatial transformations and utilizes a C++ wrapped ITK interface strictly for robust data loading. This architecture ensures full composability within the Julia ecosystem, enabling differentiable programming and integration with scientific machine learning frameworks. The package also introduces efficient HDF5-based storage for fast I/O and metadata preservation. We demonstrate that MedImages.jl provides a robust, standardized framework that simplifies common tasks such as loading, transforming, and saving medical images while boosting researcher productivity and facilitating reproducible science. Benchmarks highlight the significant I/O performance advantages of the implemented HDF5 support.
 \end{abstract}
 
 \begin{keyword}
-Medical Imaging \sep Julia \sep Spatial Metadata \sep SimpleITK \sep Open Source \sep Reproducibility
+Medical Imaging \sep Julia \sep Spatial Metadata \sep ITK \sep HDF5 \sep Open Source \sep Reproducibility
 \end{keyword}
 
 \end{frontmatter}
@@ -84,25 +84,25 @@ Medical Imaging \sep Julia \sep Spatial Metadata \sep SimpleITK \sep Open Source
 \section{Motivation and Significance}
 
 \subsection{The Role of Julia in Scientific Computing}
-Julia is a high-level, dynamic programming language designed to bridge the gap between easy-to-use languages like Python and R, and high-performance languages like C++ and Fortran \cite{PalBhattacharya2024,BelyakovaChung2020}. It solves the "two-language problem," where researchers prototype in a high-level language but must rewrite performance-critical code in a low-level language \cite{EschleGl2023,KnoppGrosser2021}. Julia combines the ease of a productivity language with the speed of a performance language, featuring a Just-In-Time (JIT) compiler, multiple dispatch, and built-in support for parallel computing \cite{SiscoWang2022,PalBhattacharya2024}. This makes it an ideal platform for scientific computing, particularly in computationally intensive fields like medical imaging.
+Julia is a high-level, dynamic programming language designed to bridge the gap between easy-to-use languages like Python and R, and high-performance languages like C++ and Fortran \cite{PalBhattacharya2024,BelyakovaChung2020}. It solves the "two-language problem," where researchers prototype in a high-level language but must rewrite performance-critical code in a low-level language \cite{EschleGl2023,KnoppGrosser2021}. Julia combines the ease of a productivity language with the speed of a performance language, featuring a Just-In-Time (JIT) compiler, multiple dispatch, and built-in support for parallel computing \cite{SiscoWang2022,PalBhattacharya2024}. This makes it an ideal platform for scientific computing, particularly in computationally intensive fields like medical imaging where large datasets and complex mathematical models are the norm.
 
 \subsection{Challenges in Medical Imaging Formats}
 Medical imaging data presents unique difficulties compared to standard images. Formats like DICOM are notoriously complex, with elaborate structures and porous metadata requirements \cite{BridgeGorman2022}. A critical challenge is the handling of spatial metadata—spacing, direction, and origin—which defines the image's physical location and orientation relative to the patient \cite{YanivLowekamp2017}. Unlike standard images, medical images often have non-isotropic voxel spacing and lack a universal coordinate system \cite{UnknownAuthor2011}. Ignoring this spatial information can lead to invalid operations and loss of clinical context \cite{YanivLowekamp2017,BridgeGorman2022}. Researchers often struggle with inconsistent image headers and the need for specialized tools to handle basic I/O and preprocessing \cite{UnknownAuthor2020,CardosoLi2022}.
 
 \subsection{The Importance of Standardized Open Source Tools}
-Standardized open-source tools are essential for democratizing access to medical image processing. They boost productivity by abstracting the complexity of standards like DICOM and ensuring that spatial metadata is handled consistently \cite{LowekampChen2013,SandkhlerJud2018}. Tools like SimpleITK have lowered the barrier to entry by providing simplified interfaces to complex algorithms \cite{LowekampChen2013}. Furthermore, open-source libraries foster reproducibility and trustworthiness in research by allowing code scrutiny and facilitating version control \cite{SchindelinRueden2015,CardosoLi2022}. They bridge the gap between research and clinical deployment by ensuring interoperability with clinical systems and preserving essential metadata \cite{BridgeGorman2022}.
+Standardized open-source tools are essential for democratizing access to medical image processing. They boost productivity by abstracting the complexity of standards like DICOM and ensuring that spatial metadata is handled consistently \cite{LowekampChen2013,SandkhlerJud2018}. Tools like SimpleITK have lowered the barrier to entry by providing simplified interfaces to complex algorithms \cite{LowekampChen2013}. Furthermore, open-source libraries foster reproducibility and trustworthiness in research by allowing code scrutiny and facilitating version control \cite{SchindelinRueden2015,CardosoLi2022}. MedImages.jl aims to provide these benefits natively within the Julia ecosystem, ensuring interoperability with clinical systems and preserving essential metadata \cite{BridgeGorman2022}.
 
 \section{Software Description}
 
 \subsection{Software Architecture}
-MedImages.jl is built to provide a seamless interface for medical image processing in Julia. Its core architecture revolves around the \texttt{MedImage} struct, which standardizes the representation of medical image data.
+MedImages.jl is built to provide a seamless, native interface for medical image processing in Julia. Its core architecture revolves around the \texttt{MedImage} struct, which standardizes the representation of medical image data.
 
-The architecture leverages Julia's interoperability features, specifically \texttt{PyCall.jl}, to integrate with \texttt{SimpleITK}, a widely used open-source library for medical image analysis. This allows MedImages.jl to utilize the robust I/O and processing capabilities of SimpleITK while providing a native Julia experience.
+A key design choice is the minimal reliance on external non-Julia dependencies for core processing. While data loading leverages the robust \texttt{ITKIOWrapper} (utilizing the C++ ITK library via JLL packages) to ensure broad format support (NIfTI, DICOM), all spatial transformations are implemented in native Julia. This distinction is crucial as it allows for full composability with other Julia packages, such as \texttt{DifferentialEquations.jl} and \texttt{Flux.jl}, and avoids the overhead and opacity of Python bridges for computational tasks. SimpleITK is utilized exclusively within the test suite to serve as a ground truth for verifying the correctness of the native implementations.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\linewidth]{figures/architecture.png}
-    \caption{Architecture of MedImages.jl illustrating the data flow from file loading to the \texttt{MedImage} struct, transformation via SimpleITK backend, and saving.}
+    \caption{Architecture of MedImages.jl. Data loading is handled via ITK C++ wrappers for robustness, while transformations are performed using native Julia libraries. Fast I/O is supported via HDF5.}
     \label{fig:architecture}
 \end{figure}
 
@@ -116,11 +116,11 @@ The \texttt{MedImage} struct (Figure \ref{fig:architecture}) encapsulates:
 \end{itemize}
 
 \subsection{Functionalities}
-MedImages.jl provides a comprehensive set of functionalities for medical image handling:
+MedImages.jl provides a comprehensive set of functionalities:
 
 \begin{itemize}
-    \item \textbf{I/O Operations:} Loading and saving of various medical image formats (NIfTI, DICOM) using \texttt{load\_image} and \texttt{save\_med\_image}.
-    \item \textbf{Spatial Transformations:} Functions to modify the spatial properties of images, including:
+    \item \textbf{Robust I/O:} Loading of various medical image formats (NIfTI, DICOM) using \texttt{ITKIOWrapper}.
+    \item \textbf{Native Julia Transformations:} Functions to modify spatial properties using \texttt{ImageTransformations.jl} and \texttt{CoordinateTransformations.jl}:
     \begin{itemize}
         \item \texttt{rotate\_mi}: Rotates the image around a specific axis.
         \item \texttt{translate\_mi}: Translates the image in physical space.
@@ -128,13 +128,11 @@ MedImages.jl provides a comprehensive set of functionalities for medical image h
         \item \texttt{resample\_to\_spacing}: Changes the voxel spacing.
         \item \texttt{crop\_mi} and \texttt{pad\_mi}: Modifies the image extent.
     \end{itemize}
+    \item \textbf{HDF5 Support:} Fast loading and saving of images using the HDF5 format, which significantly speeds up I/O for intermediate processing steps while preserving all metadata.
     \item \textbf{Orientation Management:} Tools to handle and convert image orientations (e.g., RAS, LPS).
-    \item \textbf{Metadata Management:} Ensuring that spatial metadata is correctly updated during all transformations to maintain physical consistency.
 \end{itemize}
 
 \section{Illustrative Examples}
-
-Here we demonstrate the basic usage of MedImages.jl for loading a medical image, performing a rotation, and saving the result. This workflow highlights how the package abstracts the complexity of spatial metadata handling.
 
 \subsection{Loading and Inspecting an Image}
 \begin{lstlisting}[language=Julia]
@@ -147,71 +145,86 @@ med_im = MedImages.load_image("path/to/image.nii.gz", "CT")
 # Access voxel data and metadata
 println("Origin: ", med_im.origin)
 println("Spacing: ", med_im.spacing)
-println("Direction: ", med_im.direction)
 \end{lstlisting}
 
-\subsection{Resampling an Image}
-Resampling is often necessary when registering images from different sources. MedImages.jl allows users to resample an image to a new voxel spacing while handling the interpolation of intensity values.
+\subsection{Rotating and Saving with HDF5}
+MedImages.jl allows for native rotation and efficient storage using HDF5.
 
 \begin{lstlisting}[language=Julia]
-# Define target spacing (e.g., isotropic 1mm)
-new_spacing = (1.0, 1.0, 1.0)
+using HDF5
 
-# Resample using linear interpolation
-resampled_im = MedImages.resample_to_spacing(med_im, new_spacing, MedImages.Linear_en)
-
-println("New Spacing: ", resampled_im.spacing)
-\end{lstlisting}
-
-\subsection{Rotating an Image}
-The following example shows how to rotate an image by 90 degrees around the Z-axis (axis 3). The function automatically handles interpolation and updates the direction matrix.
-
-\begin{lstlisting}[language=Julia]
-# Rotate 90 degrees around the 3rd axis (Z-axis)
-# Using Linear interpolation
+# Rotate 90 degrees around the Z-axis (axis 3)
 rotated_im = MedImages.rotate_mi(med_im, 3, 90.0, MedImages.Linear_en)
 
-# The direction cosines are updated automatically
-println("New Direction: ", rotated_im.direction)
+# Save efficiently using HDF5
+h5open("processed_data.h5", "w") do file
+    MedImages.save_med_image(file, "patient_001", rotated_im)
+end
 \end{lstlisting}
 
-\subsection{Saving the Result}
-Finally, the processed image can be saved back to disk. The spatial metadata is preserved in the output file.
+\section{Quality Assurance and Testing}
+Reliability is paramount in medical imaging software. MedImages.jl includes a comprehensive test suite that systematically compares the results of its native Julia functions against the industry-standard SimpleITK library.
 
-\begin{lstlisting}[language=Julia]
-# Save the rotated image
-MedImages.save_med_image(rotated_im, "path/to/rotated_image.nii.gz")
-\end{lstlisting}
+The testing framework covers:
+\begin{itemize}
+    \item \textbf{Basic Transformations:} Rotation, translation, scaling, cropping, and padding are verified by performing the same operation in both MedImages.jl and SimpleITK and asserting equality of the resulting voxel data and spatial metadata.
+    \item \textbf{Resampling:} Tests ensure that resampling to new spacing or reference images produces consistent results.
+    \item \textbf{Metadata Preservation:} Verification that origin, spacing, and direction matrices are correctly updated after every transformation.
+\end{itemize}
+This rigorous approach ensures that users can trust the native Julia implementation to produce clinically valid results comparable to established tools.
+
+\section{Performance Benchmarks}
+We benchmarked the core functionalities of MedImages.jl against SimpleITK (via PyCall). The benchmarks were run on a standard NIfTI volume ($512 \times 512 \times 75$).
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Operation} & \textbf{MedImages.jl (Native/ITK)} & \textbf{SimpleITK (C++)} \\
+\hline
+Load (NIfTI) & $\sim$1219 ms & $\sim$331 ms \\
+Rotation ($30^{\circ}$) & $\sim$1149 ms & $\sim$155 ms \\
+Save (HDF5 vs NIfTI) & \textbf{$\sim$71 ms} & $\sim$3217 ms \\
+Resample (Identity) & $\sim$5200 ms & $\sim$146 ms \\
+\hline
+\end{tabular}
+\caption{Benchmark results comparing execution time (median of multiple runs) on CPU.}
+\label{tab:benchmarks}
+\end{table}
+
+While the native Julia implementation for loading and rotation currently shows higher execution times compared to the highly optimized C++ SimpleITK library, the HDF5 saving mechanism introduced in MedImages.jl offers a drastic speedup (over 30x) compared to standard NIfTI saving. The resampling operation is currently slower on CPU but utilizes \texttt{KernelAbstractions.jl}, enabling execution on GPUs.
+
+\subsection{GPU Benchmarks}
+We provide a benchmark script \texttt{benchmark/run\_benchmarks\_gpu.jl} to evaluate performance on CUDA-enabled GPUs. The architecture is designed to minimize memory allocations by using unrolled kernel implementations.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Operation} & \textbf{MedImages.jl (GPU)} \\
+\hline
+Resample (Identity) & [Pending Execution on GPU Hardware] \\
+\hline
+\end{tabular}
+\caption{GPU Benchmark results (median execution time).}
+\label{tab:benchmarks_gpu}
+\end{table}
+
+The native implementation prioritizes composability and differentiability, with further performance optimizations being an active area of development.
 
 \section{Impact}
 
-MedImages.jl contributes to the growing ecosystem of Julia tools for medical imaging. By providing a native Julia interface to established libraries like SimpleITK, it empowers researchers to leverage Julia's high performance and expressiveness without losing access to standard industry tools.
+MedImages.jl contributes to the growing ecosystem of Julia tools for medical imaging. By providing a native Julia interface that does not rely on Python bindings for its core logic, it empowers researchers to leverage Julia's high performance and expressiveness.
 
 \subsection{Boosting Productivity}
-The package helps boost productivity by eliminating the need to switch between languages (the two-language problem). Researchers can perform end-to-end analysis—from data loading to complex modeling and simulation (e.g., using SciML)—within the Julia environment. This streamlines workflows and reduces the cognitive load associated with managing multiple programming environments \cite{PalBhattacharya2024,KnoppGrosser2021}.
+The package helps boost productivity by eliminating the need to switch between languages (the two-language problem). Researchers can perform end-to-end analysis within the Julia environment. The integration of HDF5 further enhances productivity by removing I/O bottlenecks in large-scale data processing pipelines \cite{KimKazmierski2025}.
 
 \subsection{Democratizing Access}
-By abstracting the complexities of the DICOM standard and spatial metadata math, MedImages.jl democratizes access to correct medical image processing. Users do not need to be experts in affine transformations or file format specifications to perform valid operations. This is crucial for interdisciplinary research where domain experts (e.g., biologists, clinicians) may not have deep software engineering expertise \cite{LowekampChen2013}.
+By abstracting the complexities of the DICOM standard and spatial metadata math, MedImages.jl democratizes access to correct medical image processing. Users do not need to be experts in affine transformations or file format specifications to perform valid operations. This is crucial for interdisciplinary research where domain experts may not have deep software engineering expertise \cite{LowekampChen2013}.
 
-\subsection{Potential for New Methods}
-Julia's potential for medical imaging is significant, with libraries like MRIReco.jl and KomaMRI.jl already demonstrating performance comparable to C/C++ \cite{KnoppGrosser2021,HeideBerg2024}. For instance, a Julia-based toolkit for Selective Inversion Recovery (SIR) MRI parameter estimation showed a 20-fold reduction in computational time compared to a previous MATLAB implementation \cite{SiscoWang2022}. MedImages.jl supports this ecosystem by providing the foundational data structures and I/O capabilities required to build advanced analysis pipelines, such as those involving automatic differentiation or machine learning integration.
+\section{Conclusions and Future Work}
 
-\section{Discussion and Future Work}
-
-MedImages.jl fills a critical gap in the Julia ecosystem by providing a native, high-performance tool for medical image manipulation. While wrappers for ITK exist, a pure Julia implementation offers better integration with other Julia packages, such as \texttt{DifferentialEquations.jl} or \texttt{Flux.jl}, allowing for end-to-end differentiable pipelines.
-
-One of the key advantages of MedImages.jl is its lightweight nature compared to heavy dependencies. By implementing core functionalities in native Julia, it allows for easier deployment. Furthermore, the potential for GPU acceleration using Julia's \texttt{CUDA.jl} or \texttt{AMDGPU.jl} packages is a significant area for future development. The \texttt{MedImage} struct is designed with this in mind, with a \texttt{current\_device} field to track where the data resides.
-
-Future work will focus on:
-\begin{itemize}
-    \item \textbf{GPU Integration:} Fully leveraging Julia's GPU capabilities for resampling and transformation operations.
-    \item \textbf{Advanced Registration:} Implementing intensity-based registration algorithms natively in Julia.
-    \item \textbf{Deep Learning Integration:} Creating seamless bridges to \texttt{Flux.jl} and \texttt{Lux.jl} for medical image segmentation and reconstruction tasks.
-\end{itemize}
-
-\section{Conclusions}
-
-MedImages.jl provides a robust, standardized, and easy-to-use framework for medical image handling in Julia. By correctly managing spatial metadata and integrating with SimpleITK, it solves key challenges in the field, including interoperability and reproducibility. As the Julia medical imaging ecosystem grows, MedImages.jl aims to serve as a foundational tool for researchers and developers.
+MedImages.jl provides a robust, standardized, and easy-to-use framework for medical image handling in Julia. By correctly managing spatial metadata and offering fast HDF5 support, it solves key challenges in interoperability and reproducibility. Future work will focus on optimizing the performance of native transformations (e.g., via GPU acceleration using \texttt{CUDA.jl}) and expanding the set of available registration algorithms.
 
 \section*{Conflict of Interest}
 The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
@@ -239,9 +252,9 @@ C4 & Legal Code License: Apache License 2.0 \\
 \hline
 C5 & Code versioning system used: git \\
 \hline
-C6 & Software code languages, tools, and services used: Julia, Python \\
+C6 & Software code languages, tools, and services used: Julia, Python (for tests) \\
 \hline
-C7 & Compilation requirements, operating environments \& dependencies: Julia 1.10+, SimpleITK \\
+C7 & Compilation requirements, operating environments \& dependencies: Julia 1.10+, SimpleITK (tests only) \\
 \hline
 C8 & If available Link to developer documentation/manual: https://github.com/JuliaHealth/MedImages.jl \\
 \hline

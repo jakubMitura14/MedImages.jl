@@ -8,3 +8,5 @@ test_data/for_resample_target/
 test_data/Tests/
 test/new/
 .venv
+*.h5
+test_data/benchmark_output/

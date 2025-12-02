@@ -64,7 +64,7 @@ function test_resample_to_spacing_suite(path_nifti)
                     sitk.WriteImage(sitk_image, "$(debug_dir)/sitk_resample_$(index).nii.gz")
                     create_nii_from_medimage_test(med_im_resampled, "$(debug_dir)/medim_resample_$(index)")
                     
-                    MedImages.test_object_equality(med_im_resampled, sitk_image)
+                    test_object_equality(med_im_resampled, sitk_image)
                     true
                 end
             end
@@ -98,7 +98,7 @@ function test_change_orientation_suite(path_nifti)
                     sitk.WriteImage(sitk_image, "$(debug_dir)/sitk_orient_$(index).nii.gz")
                     create_nii_from_medimage_test(med_im_oriented, "$(debug_dir)/medim_orient_$(index)")
                     
-                    MedImages.test_object_equality(med_im_oriented, sitk_image)
+                    test_object_equality(med_im_oriented, sitk_image)
                     true
                 end
             end
