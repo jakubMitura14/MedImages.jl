@@ -151,7 +151,7 @@
   <div class="arrow">↓</div>
 
   <!-- Load Function -->
-  <div class="box function-box">load_image()</div>
+  <div class="box function-box">load_image()<br><span style="font-size:0.7em; color:#333;">(via ITKIOWrapper)</span></div>
 
   <div class="arrow">↓</div>
 
@@ -172,18 +172,20 @@
   <!-- Logic & Backend -->
   <div class="interaction-area">
     <div class="system-box julia-side">
-      <strong>Transformations</strong><br>
+      <strong>Native Julia Transformations</strong><br>
       <span style="font-size:0.85em; margin-top:5px; display:block;">
-        Rotate, Crop, Pad, Scale, Resample
+        Rotate, Crop, Pad, Scale, Resample<br>
+        (ImageTransformations.jl, Rotations.jl)
       </span>
     </div>
 
     <div style="display:flex; align-items:center; color:#999;">↔</div>
 
     <div class="system-box backend-side">
-      <strong>Backend (PyCall)</strong><br>
+      <strong>Fast IO & Storage</strong><br>
       <span style="font-size:0.85em; margin-top:5px; display:block;">
-        SimpleITK Library<br>(C++ / Python)
+        HDF5 Integration<br>
+        ITKIOWrapper (Loading)
       </span>
     </div>
   </div>
@@ -191,14 +193,14 @@
   <div class="arrow">↓</div>
 
   <!-- Save Function -->
-  <div class="box function-box">save_med_image()</div>
+  <div class="box function-box">save_med_image()<br><span style="font-size:0.7em; color:#333;">(HDF5)</span></div>
 
   <div class="arrow">↓</div>
 
   <!-- Output -->
   <div class="box io-box">
     <strong>Processed Files</strong><br>
-    <span style="font-size:0.8em; color:#666;">NIfTI, DICOM, etc.</span>
+    <span style="font-size:0.8em; color:#666;">HDF5 (.h5), NIfTI (via test utils)</span>
   </div>
 </div>
 
