@@ -1,5 +1,6 @@
 using HDF5
 using JSON
+using Dates
 using .MedImage_data_struct: MedImage
 
 """
@@ -65,5 +66,5 @@ function load_med_image(f::HDF5.File, group_name::String, dataset_name::String)
     is_contrast_administered = read_attribute(dset, "is_contrast_administered")
     metadata = JSON.parse(read_attribute(dset, "metadata"))
 
-    return MedImage(voxel_data=voxel_data, origin=ensure_tuple(origin), spacing=ensure_tuple(spacing), direction=ensure_tuple(direction), image_type=image_type, image_subtype=image_subtype, date_of_saving=date_of_saving, acquistion_time=acquistion_time, patient_id=patient_id, current_device=current_device, study_uid=study_uid, patient_uid=patient_uid, series_uid=series_uid, study_description=study_description, legacy_file_name=legacy_file_name, display_data=display_data, clinical_data=clinical_data, is_contrast_administered=is_contrast_administered, metadata=metadata)
+    return MedImage(voxel_data=voxel_data, origin=Utils.ensure_tuple(origin), spacing=Utils.ensure_tuple(spacing), direction=Utils.ensure_tuple(direction), image_type=image_type, image_subtype=image_subtype, date_of_saving=date_of_saving, acquistion_time=acquistion_time, patient_id=patient_id, current_device=current_device, study_uid=study_uid, patient_uid=patient_uid, series_uid=series_uid, study_description=study_description, legacy_file_name=legacy_file_name, display_data=display_data, clinical_data=clinical_data, is_contrast_administered=is_contrast_administered, metadata=metadata)
 end

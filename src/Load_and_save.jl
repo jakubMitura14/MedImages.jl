@@ -8,6 +8,7 @@ using ..Brute_force_orientation
 using ..Utils
 export load_image
 export update_voxel_and_spatial_data
+export update_voxel_data
 
 """
 helper function for dicom #2
@@ -70,23 +71,6 @@ Determines the study type for an image based on its metadata using SimpleITK
 #   return MedImage_data_struct.CT_type
 # end
 
-function create_nii_from_medimage(med_image::MedImage, file_path::String)
-  # Convert voxel_data to a numpy array (Assuming voxel_data is stored in Julia array format)
-  voxel_data_np = med_image.voxel_data
-  voxel_data_np = permutedims(voxel_data_np, (3, 2, 1))
-  # Create a SimpleITK image from numpy array
-  sitk = pyimport("SimpleITK")
-  image_sitk = sitk.GetImageFromArray(voxel_data_np)
-
-  # Set spatial metadata
-  image_sitk.SetOrigin(med_image.origin)
-  image_sitk.SetSpacing(med_image.spacing)
-  image_sitk.SetDirection(med_image.direction)
-
-  # Save the image as .nii.gz
-  sitk.WriteImage(image_sitk, file_path * ".nii.gz")
-end
-
 function update_voxel_data(old_image, new_voxel_data::AbstractArray)
 
   return MedImage(
@@ -117,9 +101,9 @@ function update_voxel_and_spatial_data(old_image, new_voxel_data::AbstractArray,
 
   return MedImage(
     new_voxel_data,
-    new_origin,
-    new_spacing,
-    new_direction,
+    ensure_tuple(new_origin),
+    ensure_tuple(new_spacing),
+    ensure_tuple(new_direction),
     # old_image.spatial_metadata,
     instances(Image_type)[Int(old_image.image_type)+1],#  Int(image.image_type),
     instances(Image_subtype)[Int(old_image.image_subtype)+1],#  Int(image.image_subtype),
@@ -162,13 +146,13 @@ function load_image(path::String, type::String)::MedImage
   imaging_study = ITKIOWrapper.load_image(path)
   spatial_meta = ITKIOWrapper.load_spatial_metadata(imaging_study)
   voxel_arr_struct = ITKIOWrapper.load_voxel_data(imaging_study, spatial_meta)
-  voxel_arr = voxel_arr_struct.dat
+  voxel_arr = collect(voxel_arr_struct.dat)
   #voxel_arr = permutedims(voxel_arr, (3, 2, 1))
   study_type = type == "CT" ? MedImage_data_struct.CT_type : MedImage_data_struct.PET_type
   subtype = type == "CT" ? MedImage_data_struct.CT_subtype : MedImage_data_struct.FDG_subtype
   legacy_file_name_field = string(split(path, "/")[length(split(path, "/"))])
 
-  return MedImage(voxel_data=voxel_arr, origin=spatial_meta.origin, spacing=spatial_meta.spacing, direction=spatial_meta.direction, patient_id="test_id", image_type=study_type, image_subtype=subtype, legacy_file_name=legacy_file_name_field)
+  return MedImage(voxel_data=voxel_arr, origin=ensure_tuple(spatial_meta.origin), spacing=ensure_tuple(spatial_meta.spacing), direction=ensure_tuple(spatial_meta.direction), patient_id="test_id", image_type=study_type, image_subtype=subtype, legacy_file_name=legacy_file_name_field)
 end
 end
 

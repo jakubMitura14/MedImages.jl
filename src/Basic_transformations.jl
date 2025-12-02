@@ -2,7 +2,9 @@ module Basic_transformations
 
 using CoordinateTransformations, Interpolations, StaticArrays, LinearAlgebra, Rotations, Dictionaries
 using LinearAlgebra
+using ImageTransformations
 using ..MedImage_data_struct
+using ..Load_and_save
 export rotate_mi, crop_mi, pad_mi, translate_mi, scale_mi, computeIndexToPhysicalPointMatrices_Julia, transformIndexToPhysicalPoint_Julia, get_voxel_center_Julia, get_real_center_Julia, Rodrigues_rotation_matrix, crop_image_around_center
 
 """
@@ -112,11 +114,17 @@ function rotate_mi(image::MedImage, axis::Int, angle::Float64, Interpolator::Int
   translation = Translation(v_center...)
   transkation_center = Translation(-v_center...)
   combined_transformation = translation ∘ rotation_transformation ∘ transkation_center
-  resampled_image = collect(warp(img, combined_transformation, Interpolations.Linear()))
+
   if crop
-    new_center = get_voxel_center_Julia(resampled_image)
-    resampled_image = crop_image_around_center(resampled_image, size(img), map(x -> round(Int, x), new_center))
-    image = update_voxel_data(image, resampled_image)
+      resampled_image = collect(warp(img, combined_transformation, axes(img), Interpolations.Linear(), 0.0))
+      image = update_voxel_data(image, resampled_image)
+  else
+      resampled_image = collect(warp(img, combined_transformation, Interpolations.Linear(), 0.0))
+      # Note: if crop is false, we should probably update origin/spacing/direction too if the image expanded,
+      # but MedImage structure assumes fixed orientation usually?
+      # For now, just update voxel data, but this might lead to inconsistent metadata if size changed.
+      # But update_voxel_data handles new data size.
+      image = update_voxel_data(image, resampled_image)
   end
 
   return image
