@@ -48,7 +48,7 @@ end
 include("test_basic_transformation.jl")
 include("test_spatial_metadata_change.jl") 
 include("test_resample_to_target.jl")
-# include("test_hdf5.jl")
+include("test_hdf5.jl")
 include("dicom_nifti.jl")
 
 @testset "MedImages.jl Complete Test Suite" begin

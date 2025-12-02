@@ -1,6 +1,7 @@
 module Resample_to_target
 using Interpolations
 using Statistics
+using KernelAbstractions
 
 using ..MedImage_data_struct, ..Utils, ..Orientation_dicts, ..Spatial_metadata_change, ..Load_and_save
 export resample_to_image, scale
@@ -48,6 +49,14 @@ function resample_to_image(im_fixed::MedImage, im_moving::MedImage, interpolator
     new_spacing = im_fixed.spacing
     new_size = size(im_fixed.voxel_data)
     points_to_interpolate = get_base_indicies_arr(new_size)
+
+    # Ensure points_to_interpolate is on the same device as input data (e.g. GPU)
+    backend = KernelAbstractions.get_backend(im_moving.voxel_data)
+    if backend != CPU()
+        points_dev = similar(im_moving.voxel_data, eltype(points_to_interpolate), size(points_to_interpolate))
+        copyto!(points_dev, points_to_interpolate)
+        points_to_interpolate = points_dev
+    end
 
     points_to_interpolate = points_to_interpolate .- 1
     points_to_interpolate = points_to_interpolate .* new_spacing
