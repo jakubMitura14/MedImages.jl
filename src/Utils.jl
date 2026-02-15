@@ -472,6 +472,9 @@ function ChainRulesCore.rrule(::typeof(interpolate_pure), points_to_interpolate,
 
     function interpolate_pullback(d_output_unthunked)
         d_output_raw = unthunk(d_output_unthunked)
+        # Ensure d_output is a concrete array for Enzyme compatibility
+        d_output_concrete = convert(Array, d_output_raw)
+
         d_points = zero(points_to_interpolate)
         d_input = zero(input_array)
 
@@ -511,7 +514,7 @@ function ChainRulesCore.rrule(::typeof(interpolate_pure), points_to_interpolate,
         end
 
         if backend isa KernelAbstractions.CPU
-            d_output = d_output_raw
+            d_output = d_output_concrete
 
             if is_batched
                 # CPU 4D

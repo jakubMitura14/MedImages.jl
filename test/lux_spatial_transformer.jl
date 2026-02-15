@@ -121,35 +121,53 @@ function generate_grid_differentiable(matrices, spatial_size)
     cz = (d + 0.0) / 2.0
 
     # Construct base coordinates
-    xyz = zeros(Float32, 4, n_points)
+    # We use Zygote.Buffer for differentiation if needed, but these are constants w.r.t parameters.
+    # However, `xyz` must be treated carefully.
+
+    xyz = Matrix{Float32}(undef, 4, n_points)
     idx = 1
     for k in 1:d, j in 1:h, i in 1:w
         xyz[1, idx] = i - cx
         xyz[2, idx] = j - cy
         xyz[3, idx] = k - cz
-        xyz[4, idx] = 1.0
+        xyz[4, idx] = 1.0f0
         idx += 1
     end
 
     # Apply matrices (batch-wise)
+    # Zygote can differentiate map.
     points_vec = map(matrices) do M
+        # M is Matrix{Float64}. xyz is Matrix{Float32}.
         M_inv = inv(M)
+
+        # Matrix mult
         p = M_inv * xyz
 
         # Shift back
-        p[1, :] .+= cx
-        p[2, :] .+= cy
-        p[3, :] .+= cz
+        # Use broadcasting that Zygote likes
+        # p is 4xN
 
-        p[1:3, :]
+        # Create shifted version
+        # We need to extract 1:3 and add center
+
+        px = p[1, :] .+ cx
+        py = p[2, :] .+ cy
+        pz = p[3, :] .+ cz
+
+        # Stack to 3xN
+        # Use vcat/stack logic?
+        # Zygote handles `stack` in newer versions, or we can use `vcat(px', py', pz')`
+
+        # permutedims(hcat(px, py, pz)) is 3xN
+        permutedims(hcat(px, py, pz))
     end
 
     return stack(points_vec, dims=3)
 end
 
 # 4. Loss Function
-function compute_loss(model, ps, st, x_batch, y_target_voxel_data, directions)
-    input_data = x_batch.voxel_data
+function compute_loss(model, ps, st, input_data, y_target_voxel_data, directions, spacing)
+    # input_data passed directly (Float32 array)
 
     angles_pred, st_new = model(input_data, ps, st)
 
@@ -158,10 +176,12 @@ function compute_loss(model, ps, st, x_batch, y_target_voxel_data, directions)
 
     # Generate interpolation grid (Differentiable)
     points = generate_grid_differentiable(matrices, size(input_data)[1:3])
+    points_f32 = Float32.(points) # Convert to Float32 to match input data and avoid Enzyme issues
 
     # Interpolate using MedImages core function
     # interpolate_pure(points, input, spacing, keep_beginning, extrapolate, is_nn)
-    resampled = MedImages.Utils.interpolate_pure(points, input_data, x_batch.spacing, false, 0.0, false)
+
+    resampled = MedImages.Utils.interpolate_pure(points_f32, input_data, spacing, false, 0.0f0, false)
 
     # Reshape
     sz = size(input_data)
@@ -191,9 +211,12 @@ function run_test()
     losses = []
 
     directions = X.direction
+    input_data = X.voxel_data
+    spacing = X.spacing
+    target_data = Y.voxel_data
 
     for i in 1:20
-        (l, st), back = Zygote.pullback(p -> compute_loss(model, p, st, X, Y.voxel_data, directions), ps)
+        (l, st), back = Zygote.pullback(p -> compute_loss(model, p, st, input_data, target_data, directions, spacing), ps)
         grads = back((1.0f0, nothing))[1]
 
         opt_state, ps = Optimisers.update(opt_state, ps, grads)
