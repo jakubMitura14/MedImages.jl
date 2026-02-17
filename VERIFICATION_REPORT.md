@@ -42,6 +42,11 @@ This report summarizes the verification of `MedImages.jl/main.tex` against the r
 - The structure aligns with standard Julia package layouts and SoftwareX expectations.
 - **Action**: None required.
 
+### 7. CI/CD Issues (Manifest.toml)
+- **Status: Action Taken**
+- The CI was failing due to `Manifest.toml` being inconsistent with dependencies (specifically `Lux` and `FastClosures`).
+- **Action**: `Manifest.toml` has been deleted from the repository. This forces the CI to resolve dependencies fresh based on `Project.toml`, ensuring a consistent and working environment. This is standard practice for libraries to ensure compatibility across versions.
+
 ## Summary of Recommended Changes to `main.tex`
 
 Based on the findings, the following changes are recommended for `main.tex` to improve accuracy and compliance:
