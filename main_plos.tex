@@ -68,7 +68,14 @@ Emerging Scientific Machine Learning (SciML) paradigms require pipelines where e
 \paragraph{Challenge 4: Metadata Management and Physical Interpretation.}
 Unlike standard computer vision, medical images possess a strict "physical interpretation." A medical image is a grid of points occupying a physical region defined by an origin, spacing, and direction. The transition from medical image formats (DICOM, NIfTI) to raw numerical arrays for deep learning often strips this spatial context. This risks "metadata drift"—a potentially dangerous misalignment between voxel data and its spatial coordinates during preprocessing or augmentation.
 
-MedImages.jl provides a unified, GPU-accelerated, and differentiable imaging framework designed explicitly to address these four challenges. The structure of this paper, including the methodology and results, is organized around validating solutions to these core axes.
+MedImages.jl provides a unified, GPU-accelerated, and differentiable imaging framework designed explicitly to address these four challenges (see Figure \ref{fig:challenges_flowchart}). The structure of this paper, including the methodology and results, is organized around validating solutions to these core axes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/medimages_specialized_flowchart.png}
+    \caption{\textbf{Overview of MedImages.jl and Core Challenges.} The framework addresses critical bottlenecks in medical imaging---including large-scale data volume, pipeline integration barriers, complex metadata handling, and execution speed---by providing a unified native Julia ecosystem. This architecture enables optimized processing, seamless GPU acceleration, and full end-to-end differentiability compared to legacy Python/C++ wrapper methods.}
+    \label{fig:challenges_flowchart}
+\end{figure}
 
 \section{Theory and calculation}
 
@@ -94,7 +101,14 @@ where $C(t)$ is the decay-corrected radioactive concentration, $ID$ is the injec
 \subsection{Software Architecture}
 MedImages.jl implements a metadata paradigm inspired by the Brain Imaging Data Structure (BIDS) standard, organizing and validating clinical metadata rigorously. The core \texttt{MedImage} struct enforces metadata integrity through Julia's type system. Unlike array-based deep learning workflows where converting to tensors discards spatial context, MedImages.jl intrinsically binds metadata (origin, spacing, direction, patient ID, acquisition timestamp) to the structural definition of the medical image.
 
-ITK (C++) is used via wrapper primarily for I/O robustness (NIfTI, DICOM parsing), while spatial transformations are implemented natively in Julia. This ensures: (1) \textbf{Differentiability}—operations integrate with Zygote.jl/Enzyme.jl; (2) \textbf{Composability}—seamless integration with Lux.jl and DifferentialEquations.jl.
+ITK (C++) is used via wrapper primarily for I/O robustness (NIfTI, DICOM parsing), while spatial transformations are implemented natively in Julia. This ensures: (1) \textbf{Differentiability}—operations integrate with Zygote.jl/Enzyme.jl; (2) \textbf{Composability}—seamless integration with Lux.jl and DifferentialEquations.jl. The overall data flow and processing architecture are illustrated in Figure \ref{fig:data_flow}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/medimages_highqual.png}
+    \caption{\textbf{Data Flow and Processing Architecture of MedImages.jl.} This flowchart illustrates the framework's internal pipeline, highlighting the ingestion of diverse medical imaging formats and the central role of the \texttt{MedImage} and \texttt{BatchedMedImage} structs. By strictly binding voxel data with spatial and clinical metadata, the framework ensures physical fidelity across its native, GPU-accelerated, and fully differentiable spatial transformations.}
+    \label{fig:data_flow}
+\end{figure}
 
 To support high-throughput analysis of multimodal studies, MedImages.jl introduces \texttt{BatchedMedImage}, which stores 4D voxel data $(x, y, z, \text{batch})$. Crucially, the spatial metadata (origin, spacing, direction) is vectorized. This design allows each 3D slice within the batch to maintain unique spatial properties while residing in a unified 4D tensor, facilitating efficient batched operations where identical geometric transformations can be dispatched to the GPU in a single pass. To minimize I/O bottlenecks for large datasets, the framework supports HDF5-based storage.
 
