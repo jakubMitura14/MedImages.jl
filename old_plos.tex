@@ -197,15 +197,31 @@ Stage 2: Transform (Compute) & \textbf{~50 ms} & ~500 ms & 10.0$\times$ \\
 \label{tab:scaling_comparison}
 \end{table}
 
-Overall, MedImages.jl achieved a 7.2$\times$ total turnaround speedup compared to the MONAI PersistentDataset baseline.
+Overall, MedImages.jl achieved a 7.2$\times$ total turnaround speedup compared to the MONAI PersistentDataset baseline. This operational throughput advantage is visually depicted in Figure \ref{fig:speed_comparison}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{elsarticle/figures_new/speed_comparison.png}
+    \caption{\textbf{High-Volume Pipeline Turnaround.}
+    Turnaround times per subject during high-frequency multimodality training loops (Epochs 2+). MedImages.jl via HDF5 outpaces the MONAI PersistentDataset caching mechanism, heavily reducing both the I/O cache load and transform compute penalties.}
+    \label{fig:speed_comparison}
+\end{figure}
 
 \subsection*{Challenge 2: Speed -- GPU Acceleration Benchmarks}
-MedImages.jl was benchmarked on CPU and GPU backends (NVIDIA RTX 3090, Intel Core Ultra 9 285K). For $256 \times 256 \times 128$ volumes, MedImages.jl on GPU achieved significant speedups compared to SimpleITK on CPU:
+MedImages.jl was benchmarked on CPU and GPU backends (NVIDIA RTX 3090, Intel Core Ultra 9 285K). For $256 \times 256 \times 128$ volumes, MedImages.jl on GPU achieved significant speedups compared to SimpleITK on CPU. Figure \ref{fig:transform_benchmarks} visualizes these execution time differences across core spatial operations:
 \begin{itemize}
     \item \textbf{Resampling (Nearest Neighbor):} 115$\times$ speedup vs CPU, 17$\times$ vs SimpleITK.
     \item \textbf{Orientation Changes:} 71$\times$ speedup vs CPU, 31$\times$ vs SimpleITK.
     \item \textbf{Fused Affine Transformation:} 135$\times$ speedup vs CPU, 8.1$\times$ vs SimpleITK.
 \end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{elsarticle/figures_new/transform_benchmarks.png}
+    \caption{\textbf{Execution Time Comparison for Core Spatial Operations.}
+    Log-scale plot comparing execution times (in milliseconds) for a $256 \times 256 \times 128$ volume across SimpleITK (CPU), MedImages CPU, and MedImages GPU. Native Julia GPU acceleration via \texttt{KernelAbstractions.jl} drastically lowers computational overhead, culminating in up to 135$\times$ speedups for fused affine transforms.}
+    \label{fig:transform_benchmarks}
+\end{figure}
 
 Regarding the Fused Affine Pipeline defined in the methods, benchmarking on 100 subjects resampled to a $512^3$ target grid demonstrated per-subject GPU kernel times of under 200\,ms, confirming the pipeline's suitability for biobank-scale processing.
 
@@ -240,7 +256,15 @@ DblurDoseNet (3D U-Net) & 0.5566 & 0.5413 & Deep Learning \\
 \label{tab:dosimetry_metrics}
 \end{table}
 
-The "No-Approx UDE" implemented in Julia achieved the definitive state-of-the-art result, producing a peak Pearson correlation of \textbf{0.9570} against the Monte Carlo ground truth. This significantly outperforms both the clinical analytical standard (VSV Evaluate-Proj, $r=0.9120$) and pure deep learning frameworks (e.g., DblurDoseNet, $r=0.5566$).
+The "No-Approx UDE" implemented in Julia achieved the definitive state-of-the-art result, producing a peak Pearson correlation of \textbf{0.9570} against the Monte Carlo ground truth. This significantly outperforms both the clinical analytical standard (VSV Evaluate-Proj, $r=0.9120$) and pure deep learning frameworks (e.g., DblurDoseNet, $r=0.5566$). Figure \ref{fig:dosimetry_comparison} visually corroborates this performance, illustrating the structural accuracy of the UDE output compared to the ground truth and pure deep-learning baseline.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{elsarticle/figures_new/dosimetry_comparison_all.png}
+    \caption{\textbf{Dosimetry Accuracy Comparison Across Architectures.}
+    Visual assessment comparing the spatial accuracy of the "No-Approx UDE" ($r=0.9570$) against the Monte Carlo ground truth and established baselines. The physics-integrated UDE successfully models complex tissue boundary scatter, significantly reducing the blurring artifacts endemic to pure "black box" deep learning approaches.}
+    \label{fig:dosimetry_comparison}
+\end{figure}
 
 Crucially, the interpretability of the UDE approach is profound. The failure of pure black-box models to exceed $r=0.60$ highlights the absolute necessity of the "Physics-in-the-loop" approach. By isolating the known mechanistic physics (primary kernel deposition, patient density map) from the complex scattering phenomena learned by the neural residual, the model captures the final 5--10\% of dose variance that traditional models either ignore (VSV) or fail to systematically learn (CNNs).
 
