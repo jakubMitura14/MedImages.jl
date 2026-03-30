@@ -191,8 +191,17 @@ Crop a `MedImage` starting from `crop_beg` with dimensions `crop_size`.
 """
 function crop_mi(im::MedImage, crop_beg::Tuple{Int64,Int64,Int64}, crop_size::Tuple{Int64,Int64,Int64}, Interpolator::Interpolator_enum)::MedImage
 
-  julia_beg = crop_beg .+ 1
-  cropped_voxel_data = @view im.voxel_data[julia_beg[1]:(julia_beg[1]+crop_size[1]-1), julia_beg[2]:(julia_beg[2]+crop_size[2]-1), julia_beg[3]:(julia_beg[3]+crop_size[3]-1)]
+  # Julia array dimensions map to SimpleITK (Z,Y,X) when permuted
+  # SimpleITK args are in (X,Y,Z), meaning the tuple corresponds to Z,Y,X in Julia due to PyCall permutedims.
+  # So dim1 is actually X, dim2 is Y, dim3 is Z.
+  # However, the user passed (x,y,z) args which SimpleITK interpreted as (x,y,z).
+  # Wait, earlier we found MedImages expects reversed tuples here.
+  # Let's revert back to reverse() behavior to match the test assumptions.
+  crop_beg_rev = reverse(crop_beg)
+  crop_size_rev = reverse(crop_size)
+
+  julia_beg = crop_beg_rev .+ 1
+  cropped_voxel_data = @view im.voxel_data[julia_beg[1]:(julia_beg[1]+crop_size_rev[1]-1), julia_beg[2]:(julia_beg[2]+crop_size_rev[2]-1), julia_beg[3]:(julia_beg[3]+crop_size_rev[3]-1)]
 
   dir_diag = [im.direction[1], im.direction[5], im.direction[9]]
   cropped_origin = im.origin .+ (im.spacing .* crop_beg .* dir_diag)
@@ -273,10 +282,13 @@ Pad a `MedImage` at the beginning and end of each axis.
 """
 function pad_mi(im::MedImage, pad_beg::Tuple{Int64,Int64,Int64}, pad_end::Tuple{Int64,Int64,Int64}, pad_val, Interpolator::Interpolator_enum)::MedImage
 
+  pad_beg_rev = reverse(pad_beg)
+  pad_end_rev = reverse(pad_end)
+
   data = im.voxel_data
-  data = pad_dim(data, 1, pad_beg[1], pad_end[1], pad_val)
-  data = pad_dim(data, 2, pad_beg[2], pad_end[2], pad_val)
-  data = pad_dim(data, 3, pad_beg[3], pad_end[3], pad_val)
+  data = pad_dim(data, 1, pad_beg_rev[1], pad_end_rev[1], pad_val)
+  data = pad_dim(data, 2, pad_beg_rev[2], pad_end_rev[2], pad_val)
+  data = pad_dim(data, 3, pad_beg_rev[3], pad_end_rev[3], pad_val)
 
   dir_diag = [im.direction[1], im.direction[5], im.direction[9]]
   padded_origin = im.origin .- (im.spacing .* pad_beg .* dir_diag)
@@ -518,15 +530,18 @@ end
 function crop_mi(im::BatchedMedImage, crop_beg::Union{Tuple{Int64,Int64,Int64}, Vector{Tuple{Int64,Int64,Int64}}}, crop_size::Tuple{Int64,Int64,Int64}, Interpolator::Interpolator_enum)::BatchedMedImage
     batch_size = size(im.voxel_data, 4)
 
+    crop_size_rev = reverse(crop_size)
+
     slices = map(1:batch_size) do b
         cb = (crop_beg isa Vector) ? crop_beg[b] : crop_beg
-        julia_beg = cb .+ 1
+        cb_rev = reverse(cb)
+        julia_beg = cb_rev .+ 1
         slice = im.voxel_data[
-            julia_beg[1]:(julia_beg[1]+crop_size[1]-1),
-            julia_beg[2]:(julia_beg[2]+crop_size[2]-1),
-            julia_beg[3]:(julia_beg[3]+crop_size[3]-1),
+            julia_beg[1]:(julia_beg[1]+crop_size_rev[1]-1),
+            julia_beg[2]:(julia_beg[2]+crop_size_rev[2]-1),
+            julia_beg[3]:(julia_beg[3]+crop_size_rev[3]-1),
             b]
-        return reshape(slice, crop_size[1], crop_size[2], crop_size[3], 1)
+        return reshape(slice, crop_size_rev[1], crop_size_rev[2], crop_size_rev[3], 1)
     end
     new_voxel_data = cat(slices..., dims=4)
 
@@ -553,11 +568,13 @@ end
 
 function pad_mi(im::BatchedMedImage, pad_beg::Tuple{Int64,Int64,Int64}, pad_end::Tuple{Int64,Int64,Int64}, pad_val, Interpolator::Interpolator_enum)::BatchedMedImage
   batch_size = size(im.voxel_data, 4)
+  pad_beg_rev = reverse(pad_beg)
+  pad_end_rev = reverse(pad_end)
 
   data = im.voxel_data
-  data = pad_dim(data, 1, pad_beg[1], pad_end[1], pad_val)
-  data = pad_dim(data, 2, pad_beg[2], pad_end[2], pad_val)
-  data = pad_dim(data, 3, pad_beg[3], pad_end[3], pad_val)
+  data = pad_dim(data, 1, pad_beg_rev[1], pad_end_rev[1], pad_val)
+  data = pad_dim(data, 2, pad_beg_rev[2], pad_end_rev[2], pad_val)
+  data = pad_dim(data, 3, pad_beg_rev[3], pad_end_rev[3], pad_val)
 
   new_origins = map(1:batch_size) do b
       dir_diag = (im.direction[b][1], im.direction[b][5], im.direction[b][9])
