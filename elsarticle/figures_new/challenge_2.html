@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge 2: Speed</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #2b303a; color: white; }
+        .container { width: 800px; padding: 40px; background: #343a40; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #48bfe3; text-align: center; font-size: 2.5em; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #adb5bd; font-size: 1.2em; margin-bottom: 40px; }
+        .circle-wrapper { display: flex; justify-content: space-around; margin-bottom: 40px; }
+        .circle { width: 200px; height: 200px; border-radius: 50%; border: 8px solid #56cfe1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: radial-gradient(circle, #4ea8de, #0077b6); box-shadow: 0 0 20px rgba(86,207,225,0.4); }
+        .speedup { font-size: 3em; font-weight: bold; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .op { font-size: 1.1em; color: #caf0f8; font-weight: 600; margin-top: 10px; }
+        .cpu-badge { background: #e07a5f; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; margin-top: 10px; font-weight: bold; }
+        .gpu-badge { background: #81b29a; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; margin-top: 10px; font-weight: bold; }
+        .summary { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; border-left: 5px solid #64dfdf; }
+        .summary p { margin: 0; font-size: 1.2em; line-height: 1.5; color: #e9ecef; }
+        .highlight { color: #56cfe1; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Challenge 2: The Two-Language Barrier</h1>
+        <div class="subtitle">Overcoming the execution speed penalty of bridged C++ backends</div>
+
+        <div class="circle-wrapper">
+            <div class="circle">
+                <span class="speedup">115x</span>
+                <span class="op">Resampling<br>(Nearest Neighbor)</span>
+                <span class="gpu-badge">GPU vs CPU</span>
+            </div>
+            <div class="circle" style="border-color: #e07a5f; background: radial-gradient(circle, #f2cc8f, #e07a5f);">
+                <span class="speedup">135x</span>
+                <span class="op">Fused Affine<br>Transformation</span>
+                <span class="gpu-badge">GPU vs CPU</span>
+            </div>
+            <div class="circle" style="border-color: #9b5de5; background: radial-gradient(circle, #f15bb5, #9b5de5);">
+                <span class="speedup">71x</span>
+                <span class="op">Orientation<br>Changes</span>
+                <span class="gpu-badge">GPU vs CPU</span>
+            </div>
+        </div>
+
+        <div class="summary">
+            <p>Julia compiles natively via LLVM JIT, enabling geometric transformations to run transparently on GPU using <span class="highlight">KernelAbstractions.jl</span>. Fusing normalization, resampling, and centering into a single pass delivers up to <span class="highlight">135x speedups</span> without touching a single line of C++/CUDA.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge 1: Volume</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f7f6; }
+        .container { width: 800px; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; font-size: 2.5em; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #7f8c8d; font-size: 1.2em; margin-bottom: 40px; }
+        .bar-chart { display: flex; flex-direction: column; gap: 30px; }
+        .row { display: flex; align-items: center; }
+        .label { width: 250px; font-weight: bold; color: #34495e; font-size: 1.3em; }
+        .bar-container { flex-grow: 1; background: #ecf0f1; border-radius: 8px; overflow: hidden; height: 40px; position: relative; }
+        .bar { height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; color: white; font-weight: bold; transition: width 1s ease-in-out; }
+        .bar-python { width: 100%; background: linear-gradient(90deg, #e74c3c, #c0392b); }
+        .bar-julia { width: 14%; background: linear-gradient(90deg, #2ecc71, #27ae60); }
+        .stats { margin-top: 40px; text-align: center; padding: 20px; background: #e8f8f5; border-radius: 8px; border-left: 5px solid #1abc9c; }
+        .stats p { margin: 0; font-size: 1.4em; color: #16a085; font-weight: bold; }
+        .metrics { display: flex; justify-content: space-around; margin-top: 20px; }
+        .metric-box { text-align: center; }
+        .metric-val { font-size: 2em; font-weight: bold; color: #2c3e50; }
+        .metric-label { color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Challenge 1: The Volume Bottleneck</h1>
+        <div class="subtitle">High-throughput preprocessing for biobank-scale datasets</div>
+
+        <div class="bar-chart">
+            <div class="row">
+                <div class="label">MONAI (Python)<br><span style="font-size:0.7em; color:#95a5a6;">PersistentDataset Caching</span></div>
+                <div class="bar-container">
+                    <div class="bar bar-python">~650 ms / subject</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="label">MedImages.jl (Julia)<br><span style="font-size:0.7em; color:#95a5a6;">HDF5 + Fused Affine GPU</span></div>
+                <div class="bar-container">
+                    <div class="bar bar-julia">~90 ms</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <div class="metric-box">
+                <div class="metric-val">100</div>
+                <div class="metric-label">Subject Cohort</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-val">7.2x</div>
+                <div class="metric-label">Faster Turnaround</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-val">512³</div>
+                <div class="metric-label">Isotropic Target Grid</div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <p>By bypassing heavy Pickle serialization overheads and executing fused native kernels, MedImages.jl enables biobank scaling.</p>
+        </div>
+    </div>
+</body>
+</html>
