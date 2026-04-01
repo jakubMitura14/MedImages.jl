@@ -6,11 +6,10 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
 
 ## Challenge 1: The Volume Bottleneck (Biobank-Scale Processing)
 
-### Core Points
-1. High-throughput preprocessing of biobank-scale multimodal datasets (thousands of studies) is a major bottleneck. Our 100-subject experiment was merely a benchmark to quantify the speedup relative to existing frameworks.
-2. Traditional caching (e.g., MONAI PersistentDataset) relies on heavy Python Pickle/Pt serialization, bottlenecking large-scale pipelines.
-3. MedImages.jl uses HDF5 and Fused Affine GPU kernels, designed specifically to scale natively to thousands of examinations without cache penalty.
-4. Result: A proven 7.2× faster turnaround time (~90 ms vs ~650 ms per subject), enabling true biobank-scale data ingestion in minutes rather than days.
+### Core Narrative Flow
+1. **The Issue:** High-throughput preprocessing of biobank-scale multimodal datasets (thousands of 3D/4D studies) is a major hardware and I/O bottleneck in modern clinical research.
+2. **Other Solutions & Shortcomings (The Knowledge Gap):** Traditional caching solutions in Python, such as MONAI's `PersistentDataset` or TorchIO, rely on heavy Pickle/Pt dict-based serialization. This creates immense memory buildup and I/O friction, severely bottlenecking large-scale pipelines and preventing true biobank-scale deployment.
+3. **Our Solution & Experiments:** `MedImages.jl` implements zero-serialization HDF5 persistence combined with Fused Affine GPU kernels. Our 100-subject benchmark experiment proved a **7.2× faster turnaround time** (~90 ms vs ~650 ms per subject), enabling true biobank-scale data ingestion in minutes rather than days without cache penalties.
 
 ### Pictographic Representation & Layout
 *   **Bounding Box (Left - Traditional Pipeline):**
@@ -29,11 +28,10 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
 
 ## Challenge 2: The Two-Language Barrier (Execution Speed)
 
-### Core Points
-1. The classic "Two-Language Problem": Prototyping in Python requires wrapping opaque, compiled C++ binaries (e.g., SimpleITK).
-2. Opaque C++ binaries limit GPU acceleration and deep framework inspection.
-3. MedImages.jl is pure Julia, compiled directly via LLVM JIT, unlocking native GPU acceleration (KernelAbstractions.jl).
-4. Result: Up to 135× speedup over CPU baselines (e.g., Fused Affine).
+### Core Narrative Flow
+1. **The Issue:** The classic "Two-Language Problem" forces medical researchers to prototype in high-level languages while relying on opaque, pre-compiled low-level binaries for performance.
+2. **Other Solutions & Shortcomings (The Knowledge Gap):** Python ecosystems rely heavily on wrapping C++ libraries (e.g., SimpleITK). These opaque binaries act as a "brick wall," fundamentally limiting native GPU acceleration, creating CPU bottlenecks for spatial operations, and preventing deep framework inspection or custom hardware compilation.
+3. **Our Solution & Experiments:** `MedImages.jl` is written in pure Julia, compiled directly via LLVM JIT. This unified approach inherently unlocks native hardware acceleration via `KernelAbstractions.jl`. Our experiments demonstrate massive performance gains: an **135× speedup** for Fused Affine transformations and a **115× speedup** for spatial resampling compared to standard Python/C++ baselines.
 
 ### Pictographic Representation & Layout
 *   **Vertical Split Layout (Top vs. Bottom):**
@@ -50,11 +48,10 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
 
 ## Challenge 3: Differentiability (Physics-in-the-Loop UDEs)
 
-### Core Points
-1. Pure deep learning ("black boxes") fails to model quantitative dosimetry accurately ($r \approx 0.60$).
-2. Traditional analytical clinical models (VSV) assume homogeneous environments, losing 5-10% variance at tissue interfaces.
-3. Solution: A 4-State Universal Differential Equation (UDE) combining Mechanistic Knowns with Learned Uncertainties (Neural Residuals).
-4. Result: Monte Carlo-level accuracy ($r=0.957$) natively integrated with Zygote.jl/Enzyme.jl.
+### Core Narrative Flow
+1. **The Issue:** Accurately modeling physical phenomena (like quantitative voxel-level dosimetry) requires integrating known scientific equations directly into the training loop of machine learning architectures.
+2. **Other Solutions & Shortcomings (The Knowledge Gap):** Pure deep learning ("black box" CNNs/U-Nets) fails to respect physical constraints, resulting in poor predictive accuracy ($r \approx 0.55$). Conversely, traditional analytical clinical models (like VSV) assume homogeneous environments and ignore critical tissue heterogeneity, losing 5-10% of variance at boundaries. Furthermore, Python's fragmented "Walled Gardens" (PyTorch/JAX) struggle to differentiate through arbitrary mechanistic simulators.
+3. **Our Solution & Experiments:** We implement a 4-State Universal Differential Equation (UDE) in Julia, natively integrating Mechanistic Knowns with Learned Uncertainties (Neural Residuals) using `Zygote.jl`. Our dosimetry experiment proved this architecture achieves Monte Carlo-level accuracy (**Pearson $r=0.957$**) while maintaining a **10× speed advantage** over traditional Python analytical frameworks.
 
 ### Pictographic Representation & Layout
 *   **Left Input Node (The Knowns):**
@@ -78,11 +75,10 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
 
 ## Challenge 4: Metadata Management (Theranostic Batched Processing)
 
-### Core Points
-1. Medical imaging pipelines easily lose spatial metadata (origin, spacing, direction) when converting formats (e.g., SimpleITK to NumPy).
-2. Theranostic workflows require aligning highly heterogeneous, multi-modal data (SPECT AC, SPECT NAC, Dosemap, CT).
-3. `BatchedMedImage` explicitly binds metadata to 4D data via Julia's type system.
-4. Result: Flawless quantitative alignment (SUV deviated < 1.5% after compound affine transformation).
+### Core Narrative Flow
+1. **The Issue:** Complex theranostic workflows require perfectly aligning highly heterogeneous, multi-modal spatial data (e.g., mapping SPECT AC, SPECT NAC, and Dosemaps to a single CT anatomical grid).
+2. **Other Solutions & Shortcomings (The Knowledge Gap):** In standard Python pipelines, spatial metadata (origin, spacing, direction) is easily decoupled and lost the moment a medical image (e.g., SimpleITK) is converted into a raw NumPy tensor for deep learning. This "Metadata Drift" leads to catastrophic spatial misalignment and quantitative errors downstream.
+3. **Our Solution & Experiments:** `MedImages.jl` solves this via the `BatchedMedImage` structure, which explicitly binds physical metadata to the 4D voxel tensor using Julia's rigorous type system. Our compound affine transformation experiments demonstrated flawless quantitative alignment, ensuring Standardized Uptake Value (SUV) consistency with **< 1.5% deviation** across massive multimodal batches.
 
 ### Pictographic Representation & Layout
 *   **Top Bounding Box (The BIDS-Inspired Tensor):**
