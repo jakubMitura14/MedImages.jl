@@ -4,13 +4,13 @@ from playwright.sync_api import sync_playwright
 def render_html_to_png(html_file, png_file):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 800, "height": 450})
+        page = browser.new_page(viewport={"width": 1000, "height": 600})
 
         # Get absolute path
         abs_path = "file://" + os.path.abspath(html_file)
         page.goto(abs_path)
 
-        # Wait a moment for rendering
+        # Wait a moment for animations/rendering
         page.wait_for_timeout(1000)
 
         # Screenshot the container element

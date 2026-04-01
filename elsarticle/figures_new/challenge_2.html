@@ -3,49 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenge 2: Speed</title>
+    <title>Challenge 2: Execution Speed</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #2b303a; color: white; }
-        .container { width: 800px; padding: 40px; background: #343a40; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        h1 { color: #48bfe3; text-align: center; font-size: 2.5em; margin-bottom: 10px; }
-        .subtitle { text-align: center; color: #adb5bd; font-size: 1.2em; margin-bottom: 40px; }
-        .circle-wrapper { display: flex; justify-content: space-around; margin-bottom: 40px; }
-        .circle { width: 200px; height: 200px; border-radius: 50%; border: 8px solid #56cfe1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: radial-gradient(circle, #4ea8de, #0077b6); box-shadow: 0 0 20px rgba(86,207,225,0.4); }
-        .speedup { font-size: 3em; font-weight: bold; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .op { font-size: 1.1em; color: #caf0f8; font-weight: 600; margin-top: 10px; }
-        .cpu-badge { background: #e07a5f; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; margin-top: 10px; font-weight: bold; }
-        .gpu-badge { background: #81b29a; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; margin-top: 10px; font-weight: bold; }
-        .summary { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; border-left: 5px solid #64dfdf; }
-        .summary p { margin: 0; font-size: 1.2em; line-height: 1.5; color: #e9ecef; }
-        .highlight { color: #56cfe1; font-weight: bold; }
+        .container { width: 900px; height: 550px; background: #343a40; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; padding: 20px; display: flex; flex-direction: column; overflow: hidden; }
+        h1 { color: #48bfe3; text-align: center; font-size: 2.2em; margin-top: 10px; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #adb5bd; font-size: 1.1em; margin-bottom: 20px; font-weight: bold; }
+
+        .split { flex-grow: 1; display: flex; flex-direction: column; }
+        .row { display: flex; flex: 1; align-items: center; justify-content: space-between; padding: 0 50px; position: relative; }
+        .row-top { background: rgba(224, 122, 95, 0.1); border-bottom: 2px dashed #495057; border-radius: 8px 8px 0 0; }
+        .row-bottom { background: rgba(86, 207, 225, 0.1); border-radius: 0 0 8px 8px; }
+
+        .section-title { position: absolute; left: 20px; top: 10px; font-size: 1.2em; font-weight: bold; opacity: 0.8; }
+        .row-top .section-title { color: #e07a5f; }
+        .row-bottom .section-title { color: #48bfe3; }
+
+        /* Puzzle Icons */
+        .puzzle-group { display: flex; align-items: center; gap: 10px; }
+        .puzzle { width: 80px; height: 60px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1em; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .puzzle-py { background: #3498db; color: #fff; }
+        .puzzle-cpp { background: #f1c40f; color: #2c3e50; }
+
+        /* Julia Gear */
+        .gear-container { display: flex; align-items: center; gap: 15px; }
+        .gear { width: 90px; height: 90px; background: radial-gradient(circle, #56cfe1, #0077b6); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; box-shadow: 0 0 20px rgba(86,207,225,0.6); border: 4px dashed #caf0f8; text-align: center; line-height: 1.2; }
+
+        /* Wall and GPU */
+        .wall { width: 20px; height: 100px; background: repeating-linear-gradient(45deg, #e07a5f, #e07a5f 10px, #c0392b 10px, #c0392b 20px); border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .gpu { width: 80px; height: 80px; background: #27ae60; border-radius: 8px; border: 3px solid #145a32; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); box-shadow: 0 0 15px rgba(46,204,113,0.5); }
+        .gpu-disabled { background: #7f8c8d; border-color: #34495e; opacity: 0.5; box-shadow: none; }
+
+        /* SVG Connecting Lines */
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .arrow-blocked { stroke: #e07a5f; stroke-width: 4; stroke-dasharray: 5,5; fill: none; }
+        .arrow-glow { stroke: #56cfe1; stroke-width: 6; fill: none; filter: drop-shadow(0 0 5px #48bfe3); }
+
+        /* Speedometer & Annotations */
+        .speedometer { text-align: center; }
+        .speed-val { font-size: 3em; font-weight: bold; color: #56cfe1; text-shadow: 0 0 10px rgba(86,207,225,0.8); }
+        .speed-label { color: #caf0f8; font-size: 1.1em; margin-top: 5px; }
+        .sub-label { font-size: 0.8em; color: #adb5bd; }
+
+        .x-mark { color: #e74c3c; font-size: 3em; font-weight: bold; position: absolute; left: 47%; top: 40%; transform: translate(-50%, -50%); z-index: 5; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Challenge 2: The Two-Language Barrier</h1>
-        <div class="subtitle">Overcoming the execution speed penalty of bridged C++ backends</div>
+        <div class="subtitle">Bypassing opaque C++ backends for massive native GPU acceleration</div>
 
-        <div class="circle-wrapper">
-            <div class="circle">
-                <span class="speedup">115x</span>
-                <span class="op">Resampling<br>(Nearest Neighbor)</span>
-                <span class="gpu-badge">GPU vs CPU</span>
+        <div class="split">
+            <!-- Traditional Python Pipeline -->
+            <div class="row row-top">
+                <div class="section-title">Traditional Frameworks (e.g., SimpleITK)</div>
+
+                <div class="puzzle-group" style="z-index: 2;">
+                    <div class="puzzle puzzle-py">Python API</div>
+                    <div class="puzzle puzzle-cpp">C++ Binary</div>
+                </div>
+
+                <div class="wall" style="z-index: 2; margin-left: 50px;"></div>
+                <div class="x-mark">✗</div>
+
+                <div class="gpu gpu-disabled" style="z-index: 2;">
+                    GPU<br><span style="font-size:0.5em; font-weight:normal;">Blocked / Opaque</span>
+                </div>
             </div>
-            <div class="circle" style="border-color: #e07a5f; background: radial-gradient(circle, #f2cc8f, #e07a5f);">
-                <span class="speedup">135x</span>
-                <span class="op">Fused Affine<br>Transformation</span>
-                <span class="gpu-badge">GPU vs CPU</span>
-            </div>
-            <div class="circle" style="border-color: #9b5de5; background: radial-gradient(circle, #f15bb5, #9b5de5);">
-                <span class="speedup">71x</span>
-                <span class="op">Orientation<br>Changes</span>
-                <span class="gpu-badge">GPU vs CPU</span>
+
+            <!-- MedImages.jl Pipeline -->
+            <div class="row row-bottom">
+                <div class="section-title">MedImages.jl (Native Stack)</div>
+
+                <div class="gear-container" style="z-index: 2;">
+                    <div class="gear">Pure Julia<br><span style="font-size:0.6em; font-weight:normal;">LLVM JIT</span></div>
+                </div>
+
+                <div class="speedometer" style="z-index: 2; margin-left: 20px;">
+                    <div class="speed-val">135x</div>
+                    <div class="speed-label">Fused Affine Transforms</div>
+                    <div class="sub-label">115x Resampling Acceleration</div>
+                </div>
+
+                <div class="gpu" style="z-index: 2;">
+                    GPU<br><span style="font-size:0.5em; font-weight:normal;">KernelAbstractions</span>
+                </div>
             </div>
         </div>
 
-        <div class="summary">
-            <p>Julia compiles natively via LLVM JIT, enabling geometric transformations to run transparently on GPU using <span class="highlight">KernelAbstractions.jl</span>. Fusing normalization, resampling, and centering into a single pass delivers up to <span class="highlight">135x speedups</span> without touching a single line of C++/CUDA.</p>
-        </div>
+        <svg>
+            <!-- Top line blocked -->
+            <path class="arrow-blocked" d="M 330,120 L 440,120" />
+            <!-- Bottom line glowing -->
+            <path class="arrow-glow" d="M 230,340 C 350,340 500,340 700,340" marker-end="url(#arrowhead-cyan)"/>
+
+            <defs>
+                <marker id="arrowhead-cyan" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#56cfe1" />
+                </marker>
+            </defs>
+        </svg>
+
     </div>
 </body>
 </html>
