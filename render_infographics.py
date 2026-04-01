@@ -25,7 +25,8 @@ if __name__ == "__main__":
         ('elsarticle/figures_new/challenge_1.html', 'elsarticle/figures_new/challenge_1.png'),
         ('elsarticle/figures_new/challenge_2.html', 'elsarticle/figures_new/challenge_2.png'),
         ('elsarticle/figures_new/challenge_3.html', 'elsarticle/figures_new/challenge_3.png'),
-        ('elsarticle/figures_new/challenge_4.html', 'elsarticle/figures_new/challenge_4.png')
+        ('elsarticle/figures_new/challenge_4.html', 'elsarticle/figures_new/challenge_4.png'),
+        ('elsarticle/figures_new/dosimetry_experiment.html', 'elsarticle/figures_new/dosimetry_experiment.png')
     ]
 
     for html, png in files:

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantitative UDE Dosimetry Experiment</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f1f3f5; color: #212529; }
+        .container { width: 1050px; height: 600px; background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+        .header { background: #343a40; padding: 20px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 2em; color: #fca311; }
+        .header .subtitle { font-size: 1.1em; color: #ced4da; margin-top: 5px; }
+
+        .lanes-container { display: flex; flex: 1; padding: 20px; gap: 20px; }
+
+        .lane { flex: 1; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; border: 1px solid #dee2e6; background: #f8f9fa; }
+
+        /* Lane Styling */
+        .lane-dl { border-top: 5px solid #e74c3c; }
+        .lane-vsv { border-top: 5px solid #f1c40f; }
+        .lane-ude { border-top: 5px solid #2ecc71; background: #eefaf3; box-shadow: 0 0 15px rgba(46, 204, 113, 0.2); }
+
+        .lane-title { font-size: 1.2em; font-weight: bold; margin-bottom: 20px; color: #343a40; min-height: 50px; }
+
+        /* Icons */
+        .icon-box { width: 90px; height: 90px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 1.8em; font-weight: bold; color: white; margin-bottom: 15px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .icon-dl { background: #e74c3c; }
+        .icon-vsv { background: #f1c40f; color: #212529; }
+        .icon-ude { background: radial-gradient(circle, #2ecc71, #27ae60); border: 3px solid #f1c40f; border-radius: 50%; width: 100px; height: 100px; }
+
+        /* Input/Flow */
+        .flow-text { font-size: 0.9em; color: #6c757d; margin-bottom: 15px; font-weight: 500; }
+
+        .arrow { width: 4px; height: 40px; margin: 10px 0; position: relative; }
+        .arrow::after { content: ''; position: absolute; bottom: -8px; left: -6px; border-left: 8px solid transparent; border-right: 8px solid transparent; }
+
+        .arrow-dl { background: #e74c3c; }
+        .arrow-dl::after { border-top: 10px solid #e74c3c; }
+
+        .arrow-vsv { background: #f1c40f; }
+        .arrow-vsv::after { border-top: 10px solid #f1c40f; }
+
+        .arrow-ude { background: #2ecc71; width: 6px; }
+        .arrow-ude::after { border-top: 12px solid #2ecc71; left: -7px; }
+
+        /* Output Image Blocks */
+        .output-box { width: 140px; height: 100px; background: #e9ecef; border-radius: 6px; border: 2px solid #ced4da; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; font-size: 0.9em; color: #495057; font-weight: bold; }
+        .out-dl { filter: blur(2px); border-color: #e74c3c; background: #fadbd8; }
+        .out-vsv { border-color: #f1c40f; background: #fcf3cf; }
+        .out-ude { border-color: #2ecc71; background: #d5f5e3; box-shadow: 0 0 15px rgba(46,204,113,0.4); border-width: 3px; }
+
+        /* Badges */
+        .badge { width: 100%; padding: 12px 10px; border-radius: 6px; font-size: 0.9em; font-weight: bold; color: white; display: flex; flex-direction: column; gap: 5px; box-sizing: border-box; }
+        .badge-sub { font-size: 0.8em; font-weight: normal; opacity: 0.9; }
+
+        .badge-dl { background: #e74c3c; }
+        .badge-vsv { background: #f39c12; }
+        .badge-ude { background: #27ae60; font-size: 1em; padding: 15px 10px; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.4); }
+
+        /* Bottom Speed Bar */
+        .speed-footer { background: #e9ecef; border-top: 1px solid #dee2e6; padding: 15px 20px; display: flex; align-items: center; justify-content: center; gap: 20px; }
+        .speed-bar-container { flex: 1; height: 20px; background: #ced4da; border-radius: 10px; position: relative; overflow: hidden; max-width: 500px; }
+        .speed-bar { height: 100%; background: linear-gradient(90deg, #f1c40f, #2ecc71); width: 10%; transition: width 1s; border-radius: 10px; }
+        .speed-text { font-size: 1.1em; font-weight: bold; color: #343a40; }
+        .speed-highlight { color: #27ae60; font-size: 1.2em; }
+
+        .svg-overlay { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 10; }
+        .speed-arrow { stroke: #2ecc71; stroke-width: 3; fill: none; stroke-dasharray: 4,4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>High-Fidelity 177Lu-PSMA Dosimetry Comparison</h1>
+            <div class="subtitle">Mapping functional SPECT and anatomical CT data to Monte Carlo Ground Truth</div>
+        </div>
+
+        <div class="lanes-container">
+            <!-- Lane 1: Pure DL -->
+            <div class="lane lane-dl">
+                <div class="lane-title">Pure Deep Learning<br><span style="font-size:0.7em; color:#6c757d; font-weight:normal;">3D U-Net / DblurDoseNet</span></div>
+                <div class="icon-box icon-dl">Black Box</div>
+                <div class="flow-text">Raw SPECT/CT<br>Unconstrained Inputs</div>
+                <div class="arrow arrow-dl" style="transform: rotate(5deg);"></div>
+                <div class="output-box out-dl">Blurry Dose Map</div>
+                <div class="badge badge-dl">
+                    Pearson r ≈ 0.60
+                    <span class="badge-sub">Fails physical constraints</span>
+                </div>
+            </div>
+
+            <!-- Lane 2: Analytical -->
+            <div class="lane lane-vsv">
+                <div class="lane-title">Clinical Analytical<br><span style="font-size:0.7em; color:#6c757d; font-weight:normal;">VSV Convolution (Python)</span></div>
+                <div class="icon-box icon-vsv">Rigid Physics</div>
+                <div class="flow-text">SPECT TIA Maps<br>Homogeneous Assumption</div>
+                <div class="arrow arrow-vsv"></div>
+                <div class="output-box out-vsv">Over-smoothed Map</div>
+                <div class="badge badge-vsv">
+                    Pearson r = 0.912
+                    <span class="badge-sub">Ignores tissue heterogeneity</span>
+                </div>
+            </div>
+
+            <!-- Lane 3: SciML UDE -->
+            <div class="lane lane-ude">
+                <div class="lane-title">SciML / Julia<br><span style="font-size:0.7em; color:#6c757d; font-weight:normal;">No-Approx 4-State UDE</span></div>
+                <div class="icon-box icon-ude" style="display:flex; flex-direction:column; line-height:1.2;">
+                    <span style="font-size:0.8em;">S_homo</span>
+                    <span style="font-size:0.6em;">+</span>
+                    <span style="font-size:0.8em;">NN_θ</span>
+                </div>
+                <div class="flow-text">SPECT, CT (HU → ρ)<br>+ Kinetic Constraints</div>
+                <div class="arrow arrow-ude"></div>
+                <div class="output-box out-ude" style="color:#145a32;">High-Fidelity Map<br>(MC Equivalent)</div>
+                <div class="badge badge-ude">
+                    State-of-the-Art: r = 0.957
+                    <span class="badge-sub">Captures 100% boundary scatter</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="speed-footer">
+            <div class="speed-text">Computational Performance Advantage:</div>
+            <div class="speed-bar-container">
+                <!-- Visual trick: Bar shows the 10x differential -->
+                <div class="speed-bar"></div>
+            </div>
+            <div class="speed-text"><span class="speed-highlight">10× Faster</span> than Python VSV Baseline</div>
+        </div>
+
+        <svg class="svg-overlay">
+            <!-- Curve from VSV bottom badge to Speed Footer -->
+            <path d="M 525,480 C 525,530 650,550 780,550" class="speed-arrow" marker-end="url(#arrowhead)"/>
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#2ecc71" />
+                </marker>
+            </defs>
+        </svg>
+    </div>
+</body>
+</html>

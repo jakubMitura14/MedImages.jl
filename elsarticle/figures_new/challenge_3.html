@@ -43,12 +43,27 @@
 
         /* Math Equation Block */
         .equation { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #f8f9fa; padding: 10px 20px; border-radius: 6px; border: 1px solid #dee2e6; color: #c0392b; font-family: monospace; font-size: 1.1em; font-weight: bold; z-index: 5; }
+
+        /* Walled Garden additions */
+        .walled-garden { position: absolute; left: 20px; bottom: 20px; border: 2px dashed #95a5a6; padding: 10px; border-radius: 8px; font-size: 0.8em; color: #7f8c8d; text-align: center; width: 180px; background: rgba(236,240,241,0.5); }
+        .walled-garden-title { color: #e74c3c; font-weight: bold; margin-bottom: 5px; }
+        .garden-icons { display: flex; justify-content: space-around; font-size: 0.9em; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Challenge 3: SciML Integration</h1>
-        <div class="subtitle">Physics-in-the-loop: Differentiable Dosimetry via Universal Differential Equations (UDE)</div>
+        <div class="subtitle">Solving the "Expression Problem" for Physics-in-the-loop Differentiability</div>
+
+        <div class="walled-garden">
+            <div class="walled-garden-title">The "Walled Garden"</div>
+            Python Ecosystem fragmentation blocks native solvers.
+            <div class="garden-icons">
+                <span style="color:#e67e22;">PyTorch</span>
+                <span style="color:#3498db;">JAX</span>
+            </div>
+            <div style="font-size:1.5em; color:#e74c3c; margin-top:5px;">✗</div>
+        </div>
 
         <svg>
             <!-- From Physics (Left) to Hub -->
@@ -71,7 +86,7 @@
             </defs>
         </svg>
 
-        <div class="flow-grid">
+        <div class="flow-grid" style="margin-left: 40px;">
             <div style="display:flex; flex-direction:column; gap:20px; z-index: 2;">
                 <!-- Left Input 1 -->
                 <div class="node-left">

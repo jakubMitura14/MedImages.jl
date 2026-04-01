@@ -53,32 +53,47 @@
         <h1>Challenge 4: Metadata Management</h1>
         <div class="subtitle">Zero-cost BIDS-inspired structural tracking perfectly synchronizing Theranostics</div>
 
-        <!-- Top Tensor -->
-        <div class="tensor">
-            <div class="tensor-title">BatchedMedImage (Theranostics Workflow)</div>
+        <!-- Top Container -->
+        <div style="display: flex; gap: 30px; align-items: flex-start; width: 100%; justify-content: center; position: relative;">
 
-            <div class="slice-stack">
-                <div class="slice slice-1">177Lu SPECT AC</div>
-                <div class="slice slice-2">177Lu SPECT NAC</div>
-                <div class="slice slice-3">177Lu Dosemap</div>
-                <div class="slice slice-4">CT Anatomy</div>
+            <!-- Traditional NumPy/Python Array Problem -->
+            <div class="tensor" style="width: 250px; height: 160px; border-color: #e74c3c; background: rgba(231, 76, 60, 0.05); margin-top: 10px;">
+                <div class="tensor-title" style="color: #e74c3c; border-color: #e74c3c;">Standard NumPy Array</div>
+                <div style="color: #ced4da; text-align: center; margin-top: 20px;">
+                    <div style="font-size: 3em;">✂️</div>
+                    <div style="color: #e74c3c; font-weight: bold; margin-top: 5px;">Metadata Drift</div>
+                    <div style="font-size: 0.8em; color: #adb5bd; margin-top: 5px;">Origin & Spacing discarded upon tensor conversion</div>
+                </div>
+            </div>
 
-                <div class="bracket"></div>
-                <div class="tag">
-                    Protected Vectorized Metadata
-                    <ul>
-                        <li>Origin (x,y,z)</li>
-                        <li>Spacing (x,y,z)</li>
-                        <li>Direction Matrix</li>
-                    </ul>
+            <!-- Top Tensor -->
+            <div class="tensor">
+                <div class="tensor-title">BatchedMedImage (Theranostics Workflow)</div>
+
+                <div class="slice-stack">
+                    <div class="slice slice-1">177Lu SPECT AC</div>
+                    <div class="slice slice-2">177Lu SPECT NAC</div>
+                    <div class="slice slice-3">177Lu Dosemap</div>
+                    <div class="slice slice-4">CT Anatomy</div>
+
+                    <div class="bracket"></div>
+                    <div class="tag">
+                        Protected Vectorized Metadata
+                        <ul>
+                            <li>Origin (x,y,z)</li>
+                            <li>Spacing (x,y,z)</li>
+                            <li>Direction Matrix</li>
+                        </ul>
+                        <div style="color: #06d6a0; font-size: 0.9em; margin-top: 5px;">✓ Type System Shielded</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Transformation Arrow -->
-        <div style="position: relative; width: 100%; display: flex; justify-content: center; z-index: 3;">
+        <div style="position: relative; width: 100%; display: flex; justify-content: flex-end; padding-right: 150px; z-index: 3;">
             <div class="transform-arrow">
-                <div class="transform-label">Simultaneous Compound Resampling + 45° Rotation</div>
+                <div class="transform-label" style="left: -320px;">Simultaneous Compound Resampling + 45° Rotation</div>
             </div>
         </div>
 
