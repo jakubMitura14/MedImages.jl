@@ -34,8 +34,8 @@
 
         .integrator { width: 100px; height: 100px; border: 4px solid black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3em; font-weight: bold; background: white; }
 
-        .dose-map { width: 80px; height: 100px; border: 3px solid black; background: repeating-linear-gradient(45deg, #fff, #fff 10px, #ccc 10px, #ccc 20px); position: relative; }
-        .dose-map::after { content: ''; position: absolute; bottom: 10px; left: 10px; width: 30px; height: 40px; background: black; border-radius: 50%; opacity: 0.5; }
+        .dose-map { width: 80px; height: 100px; border: 3px solid black; background: repeating-linear-gradient(45deg, #fff, #fff 10px, #ccc 10px, #ccc 20px); position: relative; background-size: cover; background-position: center; }
+        .dose-map::after { content: ''; position: absolute; bottom: 10px; left: 10px; width: 30px; height: 40px; background: black; border-radius: 50%; opacity: 0.5; display: none; }
 
         /* Math Equation */
         .equation { font-family: "Courier New", Courier, monospace; font-size: 1.3em; font-weight: bold; padding: 10px; border: 1px solid black; background: #eee; display: inline-block; margin-top: 15px; }
@@ -134,7 +134,8 @@
                 </div>
 
                 <div class="block">
-                    <div class="dose-map"></div>
+                    <!-- Real Scanner Data Dosemap Placeholder -->
+                    <div class="dose-map" id="clinical_dose_overlay" style="background-image: url('clinical_assets/dose_overlay_ct.png');"></div>
                     <div class="block-label">High-Fidelity Dose Map</div>
                     <div class="sub-label" style="font-weight: bold; border-top: 1px solid black; padding-top: 5px; margin-top: 5px;">Pearson r = 0.957</div>
                 </div>

@@ -24,8 +24,10 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
 *   **Connections (Lines & Arrows):**
     *   Both boxes output to a central target node below them.
     *   The line from the Left box should be dashed, red, and thick (representing I/O friction).
-    *   The line from the Right box should be solid, green, and smooth (representing massive I/O throughput).
+    *   The line from the Right box should be solid, green, and direct (representing massive I/O throughput).
     *   Both lines converge on a large, central "Results Node" shaped like a massive biobank vault containing thousands of datasets, with bold text reading "**7.2× Speedup, Unlocking Thousands of Studies**".
+*   **Clinical Integration (Real Scanner Data):**
+    *   Replace the central "Results Node" vault icon with an actual Maximum Intensity Projection (MIP) rendering of a whole-body [177Lu]Lu-PSMA SPECT/CT study sourced directly from the clinical biobank, visually anchoring the scale of the dataset to real patient anatomy.
 
 ---
 
@@ -44,9 +46,11 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
     *   *Connection:* A literal "brick wall" graphic or a thick black vertical line between the Python script icon and a GPU icon, symbolizing the barrier to hardware acceleration. Next to the brick wall, place a "SimpleITK (CPU)" box with a slow progress bar (e.g., 6.69 ms for affine transform).
 *   **Bottom Region (Julia Ecosystem):**
     *   *Iconography:* A single, unified, glowing crystal or glowing gear labeled "Pure Julia / LLVM JIT".
-    *   *Connection:* Smooth, glowing gradient arrows flowing directly from the unified gear into a GPU chip icon. Place a "MedImages GPU" box with a nearly instantaneous progress bar (e.g., 0.83 ms).
+    *   *Connection:* Direct, continuous gradient arrows flowing from the unified gear into a GPU chip icon. Place a "MedImages GPU" box with a nearly instantaneous progress bar (e.g., 0.83 ms).
 *   **Annotations:**
     *   Place a speed dial/speedometer icon next to the GPU. The needle is pinned to the maximum redline, accompanied by the text: "**135× Fused Affine Acceleration**" and "**115× Resampling Acceleration**".
+*   **Clinical Integration (Real Scanner Data):**
+    *   Instead of standard progress bars, use a sequence of real CT cross-sections undergoing rapid spatial resampling (e.g., scaling from $512\times512$ to $128\times128$). The CPU side shows a single frame rendering slowly, while the MedImages GPU side displays a rapid cascade of successfully transformed clinical overlays.
 
 ---
 
@@ -71,11 +75,13 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
 *   **Connections (Merging Arrows):**
     *   A solid blue arrow from the Left Node and a dashed orange arrow from the Right Node converge into a central circular hub.
 *   **Central Hub (The UDE Integrator):**
-    *   *Shape:* A large, spinning gear surrounding a stylized integral symbol ($\int$). Show seamless circular arrows representing "Multiple Dispatch / Expression Problem Solved."
+    *   *Shape:* A large, spinning gear surrounding a stylized integral symbol ($\int$). Show continuous circular arrows representing "Multiple Dispatch / Expression Problem Solved."
     *   *Label:* "Julia UDE Integrator (SciML)"
 *   **Output Node:**
     *   An arrow flows outward from the Central Hub to a final target node shaped like a glowing patient torso (Voxel Dose Map).
     *   *Annotation attached to output:* A green checkmark badge reading "**Pearson r = 0.957 (Monte Carlo Fidelity)**".
+*   **Clinical Integration (Real Scanner Data):**
+    *   The "Voxel Dose Map" output should be an authentic, pseudo-colored dose map overlay on an axial CT slice, generated directly from the scanner's DICOM data via the UDE pipeline, explicitly demonstrating real-world tissue heterogeneity.
 
 ---
 
@@ -102,6 +108,8 @@ This document provides a precise, step-by-step blueprint for visualizing the fou
 *   **Annotations:**
     *   Place a "magnifying glass" over the bottom stack showing a graph of Standardized Uptake Values (SUV).
     *   *Text Badge:* "Clinical Metadata Perfectly Synchronized: SUV Consistency < 1.5% Deviation".
+*   **Clinical Integration (Real Scanner Data):**
+    *   The 2D slice stack must use genuine, coregistered clinical data. Specifically, show real clinical NIfTI slices corresponding to the patient's CT Anatomy, 177Lu-PSMA Dosemap, and SPECT (AC/NAC) arrays, visualizing the exact coordinate matrices being protected.
 
 ---
 
@@ -122,19 +130,55 @@ This section strictly details the experimental methodology and superior performa
 *   **Three Vertical Lanes (The Competitors):**
     *   **Lane 1 (Left - Pure Deep Learning):**
         *   *Icon:* A black box labeled "3D U-Net / DblurDoseNet"
-        *   *Flow:* Raw SPECT/CT data points in. Squiggly, uncertain arrow points out.
-        *   *Output:* A blurry, unconstrained dose map.
+        *   *Flow:* Raw SPECT/CT data points in. A non-linear, poorly constrained arrow points out.
+        *   *Output:* A low-fidelity dose map exhibiting widespread unconstrained spatial artifacts.
         *   *Metrics Badge:* Red color, "Pearson r = 0.557 (Fails physical constraints)".
     *   **Lane 2 (Center - Clinical Analytical / Python):**
         *   *Icon:* A calculator or standard rigid gears labeled "VSV Convolution (PyTheranostics)".
         *   *Flow:* SPECT TIA maps point in. Straight arrow points out.
-        *   *Output:* A crisp but overly smoothed dose map missing boundary details.
+        *   *Output:* A homogeneous dose map lacking high-frequency anatomical definition at tissue boundaries.
         *   *Metrics Badge:* Yellow color, "Pearson r = 0.912 (Ignores tissue heterogeneity)".
     *   **Lane 3 (Right - SciML UDE / Julia):**
         *   *Icon:* A hybrid icon combining a math equation ($S_{homo}$) and a neural network ($\mathcal{N}_\theta$) encased in a golden shield.
         *   *Flow:* SPECT, CT (HU $\to \rho$), and physical constants point in. A glowing, thick green arrow points out.
         *   *Output:* A highly detailed, precise dose map (matching the Monte Carlo Ground Truth).
         *   *Metrics Badge:* Green color, "**State-of-the-Art: Pearson r = 0.957**".
+*   **Clinical Integration (Real Scanner Data):**
+    *   For the three outputs in the respective lanes, embed real 2D axial dose profiles (isodose contours overlaid on anatomical CT) derived directly from the $177$Lu-PSMA patient cohort. This contrasts the unconstrained neural artifacts of Lane 1, the homogeneous lack of boundary detail in Lane 2, and the high-fidelity anatomical constraints achieved in Lane 3 against Monte Carlo ground truth.
 *   **Bottom Anchor (Speed Comparison):**
     *   A horizontal bar or speedometer spanning the bottom connecting Lane 2 (Python VSV) to Lane 3 (Julia UDE).
     *   *Annotation:* "MedImages.jl / SciML architecture maintains a **10× Speed Advantage** over traditional Python analytical frameworks."
+
+---
+
+## 6. Appendix: Clinical Asset Generation Guide
+
+To seamlessly integrate your clinical NIfTI/DICOM assets into the rendered PNG infographics via the HTML placeholders, please create the following PNG files and place them inside `elsarticle/figures_new/clinical_assets/`:
+
+**1. mip_wholebody.png** (For Challenge 1)
+*   **Dimensions:** ~ 100x120 pixels (Portrait)
+*   **Content:** A high-contrast, black-and-white Maximum Intensity Projection (MIP) rendering of a whole-body [177Lu]Lu-PSMA SPECT/CT study.
+
+**2. resampling_ct.png** (For Challenge 2)
+*   **Dimensions:** ~ 100x100 pixels (Square)
+*   **Content:** A real axial CT cross-section showing rapid spatial resampling (perhaps slightly pixelated or undergoing an explicit interpolation transform).
+
+**3. dose_overlay_ct.png** (For Challenge 3)
+*   **Dimensions:** ~ 80x100 pixels (Portrait)
+*   **Content:** An authentic, pseudo-colored (or high-contrast grayscale) 177Lu-PSMA dose map overlay on an axial CT slice, explicitly demonstrating tissue heterogeneity and boundary adherence.
+
+**4. Challenge 4 Slice Assets** (For the 3D Metadata Stack)
+*   **Dimensions for each:** ~ 120x50 pixels (Wide Landscape)
+*   **Content:** Genuine, coregistered clinical NIfTI slices corresponding to the same patient anatomy.
+    *   `spect_ac_slice.png` (SPECT AC)
+    *   `spect_nac_slice.png` (SPECT NAC)
+    *   `dosemap_slice.png` (Dosemap)
+    *   `ct_slice.png` (CT Anatomy)
+    *   *Optional but recommended: Create rotated versions (`spect_ac_slice_rot.png`, etc.) for the bottom "Aligned" stack if you want the 45-degree rotation to be explicitly visible in the data itself.*
+
+**5. Quantitative UDE Dosimetry Experiment Assets** (For the 3 Comparison Lanes)
+*   **Dimensions for each:** ~ 80x100 pixels (Portrait)
+*   **Content:** Real 2D axial dose profiles (isodose contours overlaid on anatomical CT) derived directly from the cohort.
+    *   `dl_artifacts.png` (Showing unconstrained/failed spatial approximation)
+    *   `vsv_homo.png` (Showing homogeneous lack of boundary detail)
+    *   `ude_highfi.png` (Showing the precise high-fidelity output)

@@ -262,7 +262,7 @@ The "No-Approx UDE" implemented in Julia achieved the definitive state-of-the-ar
     \centering
     \includegraphics[width=\textwidth]{elsarticle/figures_new/dosimetry_comparison_all.png}
     \caption{\textbf{Dosimetry Accuracy Comparison Across Architectures.}
-    Visual assessment comparing the spatial accuracy of the "No-Approx UDE" ($r=0.9570$) against the Monte Carlo ground truth and established baselines. The physics-integrated UDE successfully models complex tissue boundary scatter, significantly reducing the blurring artifacts endemic to pure "black box" deep learning approaches.}
+    Visual assessment comparing the spatial accuracy of the "No-Approx UDE" ($r=0.9570$) against the Monte Carlo ground truth and established baselines. The physics-integrated UDE successfully models complex tissue boundary scatter, significantly reducing the unconstrained spatial approximation artifacts endemic to pure "black box" deep learning approaches.}
     \label{fig:dosimetry_comparison}
 \end{figure}
 
@@ -288,7 +288,7 @@ Figure \ref{fig:transformation_consistency} visually illustrates this multi-moda
     \includegraphics[width=\textwidth]{elsarticle/figures_new/transformation_consistency.png}
     \caption{\textbf{Quantitative Consistency Under Compounded Batched Spatial Transformations.}
     The composite image illustrates the simultaneous processing of a theranostic multi-modal dataset ([$^{177}$Lu]Lu-PSMA SPECT AC, SPECT NAC, Dosemap, and CT) stored within a single \texttt{BatchedMedImage}. The original volumes (left panels) underwent a compounded sequence of 2.0\,mm isotropic resampling, 45\textdegree{} Z-rotation, and X-translation to produce the augmented output (right panels).
-    MedImages.jl flawlessly preserved spatial alignment between the functional distribution (SPECT/Dose) and anatomical structure (CT). Clinical metadata (SUV) remained strictly coupled, with Mean SUV and gross lesion volume varying by $<1.5\%$ (3.4913 vs 3.4660) across the entire multi-modality pipeline due to expected interpolation smoothing.}
+    MedImages.jl flawlessly preserved spatial alignment between the functional distribution (SPECT/Dose) and anatomical structure (CT). Clinical metadata (SUV) remained strictly coupled, with Mean SUV and gross lesion volume varying by $<1.5\%$ (3.4913 vs 3.4660) across the entire multi-modality pipeline due to expected continuous resampling effects.}
     \label{fig:transformation_consistency}
 \end{figure}
 
