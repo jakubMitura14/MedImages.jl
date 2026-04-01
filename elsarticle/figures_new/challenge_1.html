@@ -5,102 +5,151 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Challenge 1: The Volume Bottleneck</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f8f9fa; }
-        .container { width: 900px; height: 500px; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; padding: 20px; overflow: hidden; }
-        h1 { color: #2c3e50; text-align: center; font-size: 2.2em; margin-top: 10px; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #7f8c8d; font-size: 1.1em; margin-bottom: 40px; font-weight: bold; }
+        body { font-family: "Times New Roman", Times, serif; display: flex; justify-content: center; background-color: white; margin: 0; padding: 20px; }
+        .container { width: 900px; position: relative; border-left: 4px solid black; padding-left: 20px; }
 
-        .flow-container { display: flex; justify-content: space-around; position: relative; margin-top: 20px; }
+        /* Bottom Arrow for the Left Spine */
+        .container::after { content: ''; position: absolute; bottom: -15px; left: -12px; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 15px solid black; }
 
-        .box { width: 320px; padding: 20px; border-radius: 10px; text-align: center; z-index: 2; position: relative; background: white; }
-        .box-left { border: 3px solid #e74c3c; box-shadow: 0 4px 15px rgba(231,76,60,0.15); }
-        .box-right { border: 3px solid #2ecc71; box-shadow: 0 4px 15px rgba(46,204,113,0.15); }
+        .section { border-bottom: 3px solid black; padding-bottom: 20px; margin-bottom: 20px; position: relative; display: flex; flex-direction: column; }
+        .section:last-child { border-bottom: none; }
 
-        .box-title { font-weight: bold; font-size: 1.2em; margin-bottom: 15px; }
-        .box-left .box-title { color: #c0392b; }
-        .box-right .box-title { color: #27ae60; }
+        .section-header { font-size: 1.4em; font-weight: bold; margin-bottom: 20px; display: flex; align-items: center; }
+        .section-letter { margin-right: 10px; }
 
-        .icon-container { height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .flow-row { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 20px; box-sizing: border-box; }
 
-        /* Funnel / Disks Icon */
-        .disk { width: 60px; height: 15px; background: #bdc3c7; border: 2px solid #7f8c8d; border-radius: 50%; margin-bottom: -5px; }
-        .funnel { width: 0; height: 0; border-left: 30px solid transparent; border-right: 30px solid transparent; border-top: 40px solid #e74c3c; margin-top: 10px; }
+        .block { display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .block-label { font-weight: bold; margin-top: 10px; font-size: 1.1em; }
+        .sub-label { font-size: 0.9em; color: #333; margin-top: 5px; }
 
-        /* SSD / GPU Icon */
-        .ssd { width: 80px; height: 40px; background: #2c3e50; border-radius: 4px; border: 2px solid #34495e; position: relative; display: flex; align-items: center; justify-content: center; color: #ecf0f1; font-weight: bold; font-size: 0.8em; letter-spacing: 2px; }
-        .ssd::after { content: ''; position: absolute; right: -20px; top: 15px; width: 20px; height: 10px; border-top: 2px solid #2ecc71; border-bottom: 2px solid #2ecc71; }
-        .gpu { width: 40px; height: 40px; background: #27ae60; border-radius: 4px; border: 2px solid #145a32; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.7em; margin-left: 20px; }
+        /* Academic Visuals */
+        .db-stack { display: flex; flex-direction: column; gap: 5px; border: 2px dashed #000; padding: 10px; background: #f9f9f9; }
+        .db-disk { width: 80px; height: 20px; border: 2px solid black; background: #e0e0e0; border-radius: 5px; }
 
-        .metric { font-size: 1.6em; font-weight: bold; margin-top: 15px; }
-        .box-left .metric { color: #e74c3c; }
-        .box-right .metric { color: #2ecc71; }
+        .funnel { width: 0; height: 0; border-left: 40px solid transparent; border-right: 40px solid transparent; border-top: 50px solid #888; position: relative; }
 
-        /* SVG Connections */
-        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        .line-slow { stroke: #e74c3c; stroke-width: 4; stroke-dasharray: 8 8; fill: none; }
-        .line-fast { stroke: #2ecc71; stroke-width: 6; fill: none; }
+        .ssd { width: 100px; height: 60px; border: 2px solid black; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #e0e0e0; box-shadow: inset -2px -2px 0 rgba(0,0,0,0.2); }
 
-        /* Central Vault */
-        .vault-wrapper { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 3; }
-        .vault { width: 400px; padding: 20px; background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 8px; border: 4px solid #f39c12; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-        .vault-title { font-size: 1.5em; font-weight: bold; color: #f1c40f; text-transform: uppercase; letter-spacing: 1px; }
-        .vault-sub { font-size: 1.1em; color: #ecf0f1; margin-top: 5px; }
+        .gpu { width: 60px; height: 60px; border: 2px solid black; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #f0f0f0; position: relative; }
+        .gpu::before { content: ''; position: absolute; width: 80%; height: 80%; border: 1px dashed black; }
+
+        /* Hollow Academic Arrows */
+        .arrow { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 20px; }
+        .arrow-body { width: 40px; height: 8px; border-top: 2px solid black; border-bottom: 2px solid black; background: white; margin-right: -2px; }
+        .arrow-head { width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 15px solid black; position: relative; }
+        .arrow-head::after { content: ''; position: absolute; top: -7px; left: -15px; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid white; }
+
+        .plus { font-size: 2.5em; font-weight: bold; }
+
+        /* Charts */
+        .bar-chart { border-left: 2px solid black; border-bottom: 2px solid black; width: 200px; height: 120px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; padding-left: 10px; padding-bottom: 5px; margin-bottom: 10px; }
+        .bar { height: 15px; margin-bottom: 15px; display: flex; align-items: center; padding-left: 5px; font-size: 0.8em; font-weight: bold; color: white; }
+        .bar-monai { width: 90%; background: #666; }
+        .bar-med { width: 14%; background: #000; }
+
+        .axis-label-x { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 0.9em; white-space: nowrap; }
+        .axis-label-y { position: absolute; left: -20px; top: 50%; transform: translateY(-50%) rotate(-90deg); font-size: 0.9em; white-space: nowrap; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Challenge 1: The Volume Bottleneck</h1>
-        <div class="subtitle">Enabling biobank-scale ingestion (10,000+ studies) without I/O penalties</div>
 
-        <svg>
-            <path class="line-slow" d="M 250,220 C 250,300 450,300 450,350" marker-end="url(#arrow-red)"/>
-            <path class="line-fast" d="M 650,220 C 650,300 450,300 450,350" marker-end="url(#arrow-green)"/>
-            <defs>
-                <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                    <path d="M0,0 L0,6 L9,3 z" fill="#e74c3c" />
-                </marker>
-                <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                    <path d="M0,0 L0,6 L9,3 z" fill="#2ecc71" />
-                </marker>
-            </defs>
-        </svg>
-
-        <div class="flow-container">
-            <div class="box box-left">
-                <div class="box-title">Traditional Pipeline</div>
-                <div class="icon-container">
-                    <div style="display:flex; flex-direction:column; align-items:center;">
-                        <div class="disk"></div>
-                        <div class="disk"></div>
-                        <div class="disk"></div>
-                        <div class="funnel"></div>
-                    </div>
-                </div>
-                <div style="color:#7f8c8d; font-size:0.9em; margin-top:10px;">MONAI PersistentDataset<br>Heavy Pickle/Pt Serialization Friction</div>
-                <div style="color:#e74c3c; font-size:0.8em; margin-top:5px; font-weight:bold;">⚠️ Memory Bottleneck (TorchIO/Dicts)</div>
-                <div class="metric">~650 ms / subject</div>
+        <!-- Section A: Traditional Bottleneck -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-letter">(a)</span> Traditional caching pipeline (e.g., MONAI, TorchIO)
             </div>
 
-            <div class="box box-right">
-                <div class="box-title">MedImages.jl Pipeline</div>
-                <div class="icon-container">
-                    <div style="display:flex; align-items:center;">
+            <div class="flow-row">
+                <div class="block">
+                    <div class="db-stack">
+                        <div class="db-disk"></div>
+                        <div class="db-disk"></div>
+                        <div class="db-disk"></div>
+                    </div>
+                    <div class="block-label">Biobank dataset</div>
+                    <div class="sub-label">10,000+ multimodal studies</div>
+                </div>
+
+                <div class="arrow">
+                    <div class="arrow-body"></div>
+                    <div class="arrow-head"></div>
+                </div>
+
+                <div class="block">
+                    <div class="funnel"></div>
+                    <div class="block-label">Pickle / Pt Serialization</div>
+                    <div class="sub-label" style="color:#d32f2f;">Memory Bottleneck & I/O Friction</div>
+                </div>
+
+                <div class="arrow">
+                    <div class="arrow-body"></div>
+                    <div class="arrow-head"></div>
+                </div>
+
+                <div class="block">
+                    <div class="bar-chart" style="height: 100px;">
+                        <div class="axis-label-y">Time (ms)</div>
+                        <div class="bar bar-monai" style="color:white; padding-left: 5px;">~650 ms</div>
+                        <div class="axis-label-x">Processing Latency</div>
+                    </div>
+                    <div class="block-label">Subject Turnaround</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section B: MedImages Pipeline -->
+        <div class="section" style="border-bottom: none;">
+            <div class="section-header">
+                <span class="section-letter">(b)</span> High-throughput MedImages.jl architecture
+            </div>
+
+            <div class="flow-row">
+                <div class="block">
+                    <div class="db-stack">
+                        <div class="db-disk"></div>
+                        <div class="db-disk"></div>
+                        <div class="db-disk"></div>
+                    </div>
+                    <div class="block-label">Biobank dataset</div>
+                    <div class="sub-label">10,000+ multimodal studies</div>
+                </div>
+
+                <div class="arrow">
+                    <div class="arrow-body"></div>
+                    <div class="arrow-head"></div>
+                </div>
+
+                <div class="block" style="flex-direction: row; gap: 15px;">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
                         <div class="ssd">HDF5</div>
+                        <div class="block-label">Native I/O</div>
+                        <div class="sub-label" style="color:#388e3c;">Zero-Serialization</div>
+                    </div>
+                    <div class="plus">+</div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
                         <div class="gpu">GPU</div>
+                        <div class="block-label">Fused Affine Kernels</div>
                     </div>
                 </div>
-                <div style="color:#7f8c8d; font-size:0.9em; margin-top:10px;">Native HDF5 + Fused Affine Kernels<br>Massive I/O Throughput</div>
-                <div style="color:#2ecc71; font-size:0.8em; margin-top:5px; font-weight:bold;">✓ Zero-Serialization Architecture</div>
-                <div class="metric">~90 ms / subject</div>
+
+                <div class="arrow">
+                    <div class="arrow-body"></div>
+                    <div class="arrow-head"></div>
+                </div>
+
+                <div class="block">
+                    <div class="bar-chart" style="height: 100px;">
+                        <div class="axis-label-y">Time (ms)</div>
+                        <div class="bar bar-med" style="color:black; margin-left: 30px;">~90 ms</div>
+                        <div class="axis-label-x">Processing Latency</div>
+                    </div>
+                    <div class="block-label">7.2× Turnaround Speedup</div>
+                </div>
             </div>
         </div>
 
-        <div class="vault-wrapper">
-            <div class="vault">
-                <div class="vault-title">7.2× Speedup</div>
-                <div class="vault-sub">Unlocking Thousands of Multimodal Studies</div>
-            </div>
-        </div>
     </div>
 </body>
 </html>

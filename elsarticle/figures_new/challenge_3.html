@@ -3,131 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenge 3: Differentiability</title>
+    <title>Challenge 3: SciML Integration</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #fcfcfc; }
-        .container { width: 950px; height: 500px; background: white; border-radius: 12px; border: 1px solid #e1e8ed; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative; padding: 20px; overflow: hidden; }
-        h1 { color: #2980b9; text-align: center; font-size: 2.2em; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #7f8c8d; font-size: 1.1em; margin-bottom: 30px; font-weight: 500; }
+        body { font-family: "Times New Roman", Times, serif; display: flex; justify-content: center; background-color: white; margin: 0; padding: 20px; }
+        .container { width: 950px; position: relative; border-left: 4px solid black; padding-left: 20px; }
 
-        .flow-grid { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; height: 350px; }
+        .container::after { content: ''; position: absolute; bottom: -15px; left: -12px; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 15px solid black; }
 
-        /* Node Left: Mechanistic Physics */
-        .node-left { width: 220px; background: #e8f4f8; border: 3px solid #3498db; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(52,152,219,0.2); }
-        .node-left h3 { margin: 0 0 10px 0; color: #2980b9; font-size: 1.2em; }
-        .node-left ul { padding-left: 15px; text-align: left; font-size: 0.9em; margin: 0; color: #2c3e50; }
+        .section { border-bottom: 3px solid black; padding-bottom: 20px; margin-bottom: 20px; display: flex; flex-direction: column; }
+        .section:last-child { border-bottom: none; }
 
-        /* Node Right: Neural Target */
-        .node-right { width: 220px; background: #fff4e6; border: 3px dashed #e67e22; border-radius: 20px; padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(230,126,34,0.2); }
-        .node-right h3 { margin: 0 0 10px 0; color: #d35400; font-size: 1.2em; }
-        .node-right ul { padding-left: 15px; text-align: left; font-size: 0.9em; margin: 0; color: #2c3e50; }
+        .section-header { font-size: 1.4em; font-weight: bold; margin-bottom: 20px; display: flex; align-items: center; }
+        .section-letter { margin-right: 10px; }
 
-        /* Central Hub: UDE Integrator */
-        .hub-container { display: flex; flex-direction: column; align-items: center; }
-        .hub { width: 120px; height: 120px; background: radial-gradient(circle, #f1c40f, #f39c12); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 3.5em; font-weight: bold; color: white; border: 5px solid #d35400; box-shadow: 0 0 20px rgba(241,196,15,0.6); position: relative; }
-        .hub-label { margin-top: 10px; font-weight: bold; color: #34495e; text-align: center; font-size: 1.1em; }
-        .hub-sub { font-size: 0.8em; color: #7f8c8d; }
+        .flow-row { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 20px; box-sizing: border-box; position: relative; }
 
-        /* Output Node: Dose Map */
-        .output-container { display: flex; flex-direction: column; align-items: center; }
-        .torso { width: 80px; height: 100px; background: linear-gradient(180deg, #ecf0f1, #bdc3c7); border-radius: 40px 40px 10px 10px; border: 3px solid #7f8c8d; position: relative; overflow: hidden; box-shadow: 0 0 15px rgba(46,204,113,0.5); }
-        .dose-glow { position: absolute; bottom: 20px; left: 15px; width: 30px; height: 40px; background: radial-gradient(circle, #e74c3c, rgba(231,76,60,0)); border-radius: 50%; opacity: 0.8; }
+        .block { display: flex; flex-direction: column; align-items: center; text-align: center; z-index: 2; background: white; }
+        .block-label { font-weight: bold; margin-top: 10px; font-size: 1.1em; }
+        .sub-label { font-size: 0.9em; color: #333; margin-top: 5px; }
 
-        .badge { background: #2ecc71; color: white; font-weight: bold; padding: 10px 15px; border-radius: 20px; margin-top: 15px; font-size: 1em; box-shadow: 0 4px 6px rgba(46,204,113,0.3); border: 2px solid #27ae60; text-align: center; }
+        /* Walled Garden */
+        .walled-garden { border: 2px dashed black; padding: 15px; display: flex; flex-direction: column; align-items: center; background: #fafafa; }
+        .garden-icons { display: flex; gap: 10px; margin-top: 10px; }
+        .py-node { border: 1px solid black; padding: 5px 10px; background: #eee; font-weight: bold; }
 
-        /* SVG Connections */
+        /* UDE Blocks */
+        .physics-node { border: 3px solid black; padding: 15px; text-align: left; width: 180px; background: white; }
+        .neural-node { border: 3px dashed black; padding: 15px; text-align: left; width: 180px; background: #f9f9f9; }
+        .physics-node ul, .neural-node ul { margin: 5px 0 0 15px; padding: 0; font-size: 0.9em; }
+
+        .integrator { width: 100px; height: 100px; border: 4px solid black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3em; font-weight: bold; background: white; }
+
+        .dose-map { width: 80px; height: 100px; border: 3px solid black; background: repeating-linear-gradient(45deg, #fff, #fff 10px, #ccc 10px, #ccc 20px); position: relative; }
+        .dose-map::after { content: ''; position: absolute; bottom: 10px; left: 10px; width: 30px; height: 40px; background: black; border-radius: 50%; opacity: 0.5; }
+
+        /* Math Equation */
+        .equation { font-family: "Courier New", Courier, monospace; font-size: 1.3em; font-weight: bold; padding: 10px; border: 1px solid black; background: #eee; display: inline-block; margin-top: 15px; }
+
+        /* SVGs */
         svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-        .path-physics { stroke: #3498db; stroke-width: 4; fill: none; }
-        .path-neural { stroke: #e67e22; stroke-width: 4; stroke-dasharray: 6,6; fill: none; }
-        .path-out { stroke: #2ecc71; stroke-width: 5; fill: none; }
+        .line-solid { stroke: black; stroke-width: 4; fill: none; }
+        .line-dashed { stroke: black; stroke-width: 4; stroke-dasharray: 8 8; fill: none; }
 
-        /* Math Equation Block */
-        .equation { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #f8f9fa; padding: 10px 20px; border-radius: 6px; border: 1px solid #dee2e6; color: #c0392b; font-family: monospace; font-size: 1.1em; font-weight: bold; z-index: 5; }
+        .plus { font-size: 2em; font-weight: bold; margin: 0 10px; }
 
-        /* Walled Garden additions */
-        .walled-garden { position: absolute; left: 20px; bottom: 20px; border: 2px dashed #95a5a6; padding: 10px; border-radius: 8px; font-size: 0.8em; color: #7f8c8d; text-align: center; width: 180px; background: rgba(236,240,241,0.5); }
-        .walled-garden-title { color: #e74c3c; font-weight: bold; margin-bottom: 5px; }
-        .garden-icons { display: flex; justify-content: space-around; font-size: 0.9em; font-weight: bold; }
+        .x-mark { font-size: 2.5em; font-weight: bold; margin-left: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Challenge 3: SciML Integration</h1>
-        <div class="subtitle">Solving the "Expression Problem" for Physics-in-the-loop Differentiability</div>
 
-        <div class="walled-garden">
-            <div class="walled-garden-title">The "Walled Garden"</div>
-            Python Ecosystem fragmentation blocks native solvers.
-            <div class="garden-icons">
-                <span style="color:#e67e22;">PyTorch</span>
-                <span style="color:#3498db;">JAX</span>
-            </div>
-            <div style="font-size:1.5em; color:#e74c3c; margin-top:5px;">✗</div>
-        </div>
-
-        <svg>
-            <!-- From Physics (Left) to Hub -->
-            <path class="path-physics" d="M 250,150 C 350,150 350,220 400,220" marker-end="url(#arrow-blue)"/>
-            <!-- From Neural (Left/Bottom) to Hub -->
-            <path class="path-neural" d="M 250,300 C 350,300 350,220 400,220" marker-end="url(#arrow-orange)"/>
-            <!-- From Hub to Output (Right) -->
-            <path class="path-out" d="M 530,220 L 680,220" marker-end="url(#arrow-green)"/>
-
-            <defs>
-                <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                    <path d="M0,0 L0,6 L9,3 z" fill="#3498db" />
-                </marker>
-                <marker id="arrow-orange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                    <path d="M0,0 L0,6 L9,3 z" fill="#e67e22" />
-                </marker>
-                <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                    <path d="M0,0 L0,6 L9,3 z" fill="#2ecc71" />
-                </marker>
-            </defs>
-        </svg>
-
-        <div class="flow-grid" style="margin-left: 40px;">
-            <div style="display:flex; flex-direction:column; gap:20px; z-index: 2;">
-                <!-- Left Input 1 -->
-                <div class="node-left">
-                    <h3>Mechanistic Knowns</h3>
-                    <ul>
-                        <li>Physical Decay (λ)</li>
-                        <li>S-Value Kernels</li>
-                        <li>CT Density (HU → ρ)</li>
-                        <li>DICOM Calibration (CF)</li>
-                    </ul>
-                </div>
-                <!-- Left Input 2 -->
-                <div class="node-right">
-                    <h3>Neural Target (Uncertainties)</h3>
-                    <ul>
-                        <li>Complex Interface Scatter (∇ρ)</li>
-                        <li>Receptor Sink Effects</li>
-                        <li>Washout Kinetic Drift</li>
-                    </ul>
-                </div>
+        <!-- Section A: Walled Garden Problem -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-letter">(a)</span> The "Walled Garden" expression problem
             </div>
 
-            <!-- Central Hub -->
-            <div class="hub-container" style="z-index: 2;">
-                <div class="hub">∫</div>
-                <div class="hub-label">SciML UDE Integrator</div>
-                <div class="hub-sub">4-State Kinematic System</div>
-            </div>
-
-            <!-- Output Right -->
-            <div class="output-container" style="z-index: 2;">
-                <div class="torso">
-                    <div class="dose-glow"></div>
+            <div class="flow-row" style="justify-content: flex-start; gap: 40px;">
+                <div class="block">
+                    <div class="walled-garden">
+                        <strong>Python Deep Learning Ecosystem</strong>
+                        <div class="garden-icons">
+                            <div class="py-node">PyTorch</div>
+                            <div class="py-node">JAX</div>
+                        </div>
+                    </div>
+                    <div class="sub-label" style="margin-top: 10px; max-width: 250px;">Frameworks lock operations inside isolated C++ backends, fracturing the AD graph.</div>
                 </div>
-                <div class="badge">✓ Pearson r = 0.957<br><span style="font-size:0.8em; font-weight:normal;">Monte Carlo Fidelity</span></div>
-                <div style="color:#7f8c8d; font-size:0.8em; margin-top:5px; text-align:center;">10x Speed Advantage<br>vs Python Baselines</div>
+
+                <div class="x-mark">✗</div>
+
+                <div class="block">
+                    <div class="py-node" style="padding: 20px; border-radius: 50%;">Classical Solvers</div>
+                    <div class="sub-label" style="margin-top: 10px;">(e.g., Differential Equations)</div>
+                </div>
             </div>
         </div>
 
-        <div class="equation">
-            dD/dt = [A(t) * K_homo]/m(r) + NN_θ(A, ρ, ∇ρ)
+        <!-- Section B: Julia SciML UDE -->
+        <div class="section" style="border-bottom: none;">
+            <div class="section-header">
+                <span class="section-letter">(b)</span> Native physics-in-the-loop dosimetry (SciML)
+            </div>
+
+            <svg>
+                <!-- Arrow from Physics to Integrator -->
+                <path class="line-solid" d="M 230,130 C 300,130 350,180 430,180" marker-end="url(#arrowhead)"/>
+                <!-- Arrow from Neural to Integrator -->
+                <path class="line-dashed" d="M 230,260 C 300,260 350,180 430,180" marker-end="url(#arrowhead)"/>
+                <!-- Arrow from Integrator to Output -->
+                <path class="line-solid" d="M 530,180 L 700,180" marker-end="url(#arrowhead)"/>
+
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="black" />
+                    </marker>
+                </defs>
+            </svg>
+
+            <div class="flow-row" style="height: 350px;">
+                <div style="display: flex; flex-direction: column; gap: 30px; z-index: 2;">
+                    <div class="block">
+                        <div class="physics-node">
+                            <strong>Mechanistic Knowns</strong>
+                            <ul>
+                                <li>Physical Decay (λ)</li>
+                                <li>S-Value Convolutions</li>
+                                <li>CT Density (HU → ρ)</li>
+                                <li>DICOM Calibration (CF)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="block">
+                        <div class="neural-node">
+                            <strong>Neural Target (Uncertainties)</strong>
+                            <ul>
+                                <li>Interface Scatter (∇ρ)</li>
+                                <li>Receptor Sink Effects</li>
+                                <li>Washout Kinetic Drift</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="block">
+                    <div class="integrator">∫</div>
+                    <div class="block-label">Julia UDE Integrator</div>
+                    <div class="sub-label">Zygote.jl Differentiable</div>
+                </div>
+
+                <div class="block">
+                    <div class="dose-map"></div>
+                    <div class="block-label">High-Fidelity Dose Map</div>
+                    <div class="sub-label" style="font-weight: bold; border-top: 1px solid black; padding-top: 5px; margin-top: 5px;">Pearson r = 0.957</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; z-index: 2;">
+                <div class="equation">
+                    dD/dt = [A(t) * K_homo]/m(r) + NN_θ(A, ρ, ∇ρ)
+                </div>
+            </div>
+
         </div>
     </div>
 </body>

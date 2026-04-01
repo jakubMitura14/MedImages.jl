@@ -5,119 +5,164 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Challenge 4: Metadata Fidelity</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #212529; color: #f8f9fa; }
-        .container { width: 900px; height: 500px; background: #343a40; border-radius: 12px; border: 1px solid #495057; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; overflow: hidden; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        h1 { color: #fca311; text-align: center; font-size: 2.2em; margin-bottom: 5px; margin-top: 10px; }
-        .subtitle { text-align: center; color: #ced4da; font-size: 1.1em; margin-bottom: 10px; font-weight: 400; }
+        body { font-family: "Times New Roman", Times, serif; display: flex; justify-content: center; background-color: white; margin: 0; padding: 20px; }
+        .container { width: 900px; position: relative; border-left: 4px solid black; padding-left: 20px; }
 
-        /* 3D BIDS Cube Structure */
-        .tensor { width: 400px; height: 160px; border: 3px dashed rgba(252, 163, 17, 0.4); padding: 10px; border-radius: 10px; position: relative; background: rgba(255, 183, 3, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2; margin-top: 10px; }
-        .tensor-title { position: absolute; top: -14px; left: 15px; background: #343a40; padding: 0 10px; color: #fca311; font-weight: bold; font-size: 1.1em; border: 1px solid rgba(252, 163, 17, 0.4); border-radius: 4px; }
+        .container::after { content: ''; position: absolute; bottom: -15px; left: -12px; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 15px solid black; }
 
-        .slice-stack { position: relative; width: 180px; height: 100px; perspective: 1000px; }
-        .slice { position: absolute; width: 140px; height: 60px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.5); transform: rotateX(60deg) rotateZ(45deg); box-shadow: -5px 5px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: bold; color: #fff; text-align: center; transition: all 0.3s; }
+        .section { border-bottom: 3px solid black; padding-bottom: 20px; margin-bottom: 20px; display: flex; flex-direction: column; }
+        .section:last-child { border-bottom: none; }
 
-        /* Stack 1 (Top) */
-        .slice-1 { top: -20px; left: 20px; background: rgba(231, 76, 60, 0.3); border-color: #e74c3c; z-index: 4; }
-        .slice-2 { top: -5px; left: 20px; background: rgba(52, 152, 219, 0.3); border-color: #3498db; z-index: 3; }
-        .slice-3 { top: 10px; left: 20px; background: rgba(155, 89, 182, 0.3); border-color: #9b5de5; z-index: 2; }
-        .slice-4 { top: 25px; left: 20px; background: rgba(46, 204, 113, 0.3); border-color: #2ecc71; z-index: 1; }
+        .section-header { font-size: 1.4em; font-weight: bold; margin-bottom: 20px; display: flex; align-items: center; }
+        .section-letter { margin-right: 10px; }
 
-        /* Stack 2 (Rotated - Bottom) */
-        .slice-stack-rot { position: relative; width: 180px; height: 100px; perspective: 1000px; }
-        .slice-rot { transform: rotateX(60deg) rotateZ(-15deg); }
+        .flow-row { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 20px; box-sizing: border-box; }
 
-        /* Metadata Tag Bracket */
-        .bracket { position: absolute; right: -80px; top: 50%; transform: translateY(-50%); width: 20px; height: 100px; border-top: 3px solid #ced4da; border-bottom: 3px solid #ced4da; border-right: 3px solid #ced4da; border-radius: 0 8px 8px 0; }
-        .tag { position: absolute; right: -180px; top: 50%; transform: translateY(-50%); background: #2c3e50; padding: 10px; border-radius: 6px; border-left: 4px solid #fca311; font-size: 0.8em; font-weight: bold; color: #ecf0f1; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .tag ul { margin: 5px 0 0 0; padding-left: 15px; color: #adb5bd; font-weight: normal; }
+        .block { display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .block-label { font-weight: bold; margin-top: 10px; font-size: 1.1em; }
+        .sub-label { font-size: 0.9em; color: #333; margin-top: 5px; }
 
-        /* Connection Arrow */
-        .transform-arrow { width: 3px; height: 40px; background: #fca311; margin: 10px 0; position: relative; z-index: 2; }
-        .transform-arrow::after { content: ''; position: absolute; bottom: -8px; left: -6px; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid #fca311; }
-        .transform-label { background: #14213d; color: #fca311; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9em; border: 1px solid #fca311; box-shadow: 0 4px 6px rgba(0,0,0,0.3); position: absolute; top: 50%; transform: translateY(-50%); left: 50px; white-space: nowrap; }
+        /* 3D Stack */
+        .tensor-box { width: 300px; height: 180px; border: 2px dashed black; position: relative; display: flex; flex-direction: column; justify-content: center; background: #fafafa; }
+        .slice-stack { position: relative; width: 150px; height: 100px; margin-left: 40px; margin-top: -20px; perspective: 1000px; }
+        .slice { position: absolute; width: 120px; height: 50px; background: #fff; border: 2px solid black; transform: rotateX(60deg) rotateZ(45deg); box-shadow: -2px 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-size: 0.7em; font-weight: bold; color: black; }
 
-        /* Bottom Row Wrapper */
-        .bottom-row { display: flex; align-items: center; justify-content: center; gap: 40px; width: 100%; position: relative; }
+        .slice-1 { top: -20px; left: 20px; z-index: 4; }
+        .slice-2 { top: -5px; left: 20px; z-index: 3; }
+        .slice-3 { top: 10px; left: 20px; z-index: 2; }
+        .slice-4 { top: 25px; left: 20px; z-index: 1; }
 
-        /* Badge */
-        .badge-container { background: rgba(6, 214, 160, 0.1); border-left: 5px solid #06d6a0; padding: 15px; border-radius: 8px; width: 300px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); position: relative; }
-        .badge-title { color: #06d6a0; font-size: 1.1em; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
-        .badge-text { color: #ced4da; font-size: 0.9em; line-height: 1.4; }
-        .magnifying-glass { width: 30px; height: 30px; border: 3px solid #06d6a0; border-radius: 50%; position: absolute; top: -15px; right: -15px; background: #343a40; display: flex; justify-content: center; align-items: center; color: #06d6a0; font-weight: bold; font-size: 1.2em; box-shadow: 0 0 10px rgba(6,214,160,0.5); }
-        .magnifying-glass::after { content: ''; position: absolute; bottom: -6px; right: -6px; width: 12px; height: 3px; background: #06d6a0; transform: rotate(45deg); }
+        /* Rotated Stack */
+        .slice-stack-rot { position: relative; width: 150px; height: 100px; margin-left: 40px; margin-top: -20px; perspective: 1000px; }
+        .slice-rot { position: absolute; width: 120px; height: 50px; background: #eee; border: 2px solid black; transform: rotateX(60deg) rotateZ(0deg); box-shadow: -2px 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-size: 0.7em; font-weight: bold; color: black; }
+
+        /* Metadata Tags */
+        .bracket { position: absolute; right: 50px; top: 50%; transform: translateY(-50%); width: 20px; height: 80px; border-top: 2px solid black; border-bottom: 2px solid black; border-right: 2px solid black; }
+        .tag-list { position: absolute; right: -70px; top: 50%; transform: translateY(-50%); font-size: 0.8em; text-align: left; }
+        .tag-list ul { margin: 0; padding-left: 15px; }
+
+        /* Numpy Scissors */
+        .scissors { font-size: 3em; color: black; }
+        .discarded-tags { border: 2px dotted #888; padding: 10px; font-size: 0.8em; color: #888; background: #f0f0f0; }
+
+        /* Hollow Academic Arrows */
+        .arrow { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 20px; }
+        .arrow-body { width: 40px; height: 8px; border-top: 2px solid black; border-bottom: 2px solid black; background: white; margin-right: -2px; }
+        .arrow-head { width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 15px solid black; position: relative; }
+        .arrow-head::after { content: ''; position: absolute; top: -7px; left: -15px; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid white; }
+
+        .arrow-down { width: 20px; height: 60px; flex-direction: column; margin: 10px 0; }
+        .arrow-down .arrow-body { width: 8px; height: 40px; border: none; border-left: 2px solid black; border-right: 2px solid black; margin-right: 0; margin-bottom: -2px; }
+        .arrow-down .arrow-head { border-top: 15px solid black; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: none; }
+        .arrow-down .arrow-head::after { top: -15px; left: -7px; border-top: 11px solid white; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: none; }
+
+        .transform-label { font-weight: bold; background: white; padding: 5px 10px; border: 1px solid black; font-size: 0.9em; z-index: 5; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Challenge 4: Metadata Management</h1>
-        <div class="subtitle">Zero-cost BIDS-inspired structural tracking perfectly synchronizing Theranostics</div>
 
-        <!-- Top Container -->
-        <div style="display: flex; gap: 30px; align-items: flex-start; width: 100%; justify-content: center; position: relative;">
-
-            <!-- Traditional NumPy/Python Array Problem -->
-            <div class="tensor" style="width: 250px; height: 160px; border-color: #e74c3c; background: rgba(231, 76, 60, 0.05); margin-top: 10px;">
-                <div class="tensor-title" style="color: #e74c3c; border-color: #e74c3c;">Standard NumPy Array</div>
-                <div style="color: #ced4da; text-align: center; margin-top: 20px;">
-                    <div style="font-size: 3em;">✂️</div>
-                    <div style="color: #e74c3c; font-weight: bold; margin-top: 5px;">Metadata Drift</div>
-                    <div style="font-size: 0.8em; color: #adb5bd; margin-top: 5px;">Origin & Spacing discarded upon tensor conversion</div>
-                </div>
+        <!-- Section A: Metadata Drift -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-letter">(a)</span> Traditional array conversion (Metadata Drift)
             </div>
 
-            <!-- Top Tensor -->
-            <div class="tensor">
-                <div class="tensor-title">BatchedMedImage (Theranostics Workflow)</div>
-
-                <div class="slice-stack">
-                    <div class="slice slice-1">177Lu SPECT AC</div>
-                    <div class="slice slice-2">177Lu SPECT NAC</div>
-                    <div class="slice slice-3">177Lu Dosemap</div>
-                    <div class="slice slice-4">CT Anatomy</div>
-
-                    <div class="bracket"></div>
-                    <div class="tag">
-                        Protected Vectorized Metadata
-                        <ul>
-                            <li>Origin (x,y,z)</li>
-                            <li>Spacing (x,y,z)</li>
-                            <li>Direction Matrix</li>
-                        </ul>
-                        <div style="color: #06d6a0; font-size: 0.9em; margin-top: 5px;">✓ Type System Shielded</div>
+            <div class="flow-row" style="justify-content: space-around;">
+                <div class="block">
+                    <div style="border: 2px solid black; padding: 15px; font-weight: bold; background: #eee;">
+                        SimpleITK / NIfTI
+                        <div class="sub-label">Spacing, Origin, Direction</div>
                     </div>
+                    <div class="block-label">DICOM/NIfTI File</div>
+                </div>
+
+                <div class="block">
+                    <div class="scissors">✂</div>
+                    <div class="block-label">GetArrayFromImage()</div>
+                </div>
+
+                <div class="block">
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="border: 2px solid black; padding: 25px; font-weight: bold; font-family: monospace;">
+                            [[1.4, 0.2, ...]<br> [0.1, 0.8, ...]]
+                        </div>
+                        <div class="discarded-tags">
+                            <strong>Discarded:</strong>
+                            <ul style="margin: 5px 0 0 15px;">
+                                <li>Origin (x,y,z)</li>
+                                <li>Spacing (x,y,z)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="block-label">Standard NumPy Tensor</div>
+                    <div class="sub-label" style="font-weight: bold; color: black; margin-top: 5px;">Spatial mapping permanently lost</div>
                 </div>
             </div>
         </div>
 
-        <!-- Transformation Arrow -->
-        <div style="position: relative; width: 100%; display: flex; justify-content: flex-end; padding-right: 150px; z-index: 3;">
-            <div class="transform-arrow">
-                <div class="transform-label" style="left: -320px;">Simultaneous Compound Resampling + 45° Rotation</div>
-            </div>
-        </div>
-
-        <!-- Bottom Row (Transformed Stack + Badge) -->
-        <div class="bottom-row">
-            <!-- Rotated Tensor -->
-            <div class="tensor" style="width: 250px; margin: 0; padding: 10px 0;">
-                <div class="slice-stack-rot">
-                    <div class="slice slice-rot slice-1">SPECT AC</div>
-                    <div class="slice slice-rot slice-2">SPECT NAC</div>
-                    <div class="slice slice-rot slice-3">Dosemap</div>
-                    <div class="slice slice-rot slice-4">CT (Aligned)</div>
-                </div>
+        <!-- Section B: BatchedMedImage -->
+        <div class="section" style="border-bottom: none;">
+            <div class="section-header">
+                <span class="section-letter">(b)</span> MedImages.jl structural tracking (Theranostics)
             </div>
 
-            <!-- Result Badge -->
-            <div class="badge-container">
-                <div class="magnifying-glass">SUV</div>
-                <div class="badge-title">✓ Perfect Clinical Consistency</div>
-                <div class="badge-text">
-                    Standardized Uptake Value (SUV) identical to SimpleITK up to <strong>10⁻¹⁴</strong> precision.<br><br>
-                    Mean SUV deviated <strong>&lt; 1.5%</strong> (3.491 vs 3.466) strictly due to expected grid interpolation.
+            <div style="display: flex; justify-content: space-between; padding: 0 40px;">
+
+                <div class="block">
+                    <div class="tensor-box">
+                        <div style="position: absolute; top: -10px; left: 10px; background: white; padding: 0 5px; font-weight: bold;">BatchedMedImage</div>
+                        <div class="slice-stack">
+                            <div class="slice slice-1">SPECT AC</div>
+                            <div class="slice slice-2">SPECT NAC</div>
+                            <div class="slice slice-3">Dosemap</div>
+                            <div class="slice slice-4">CT Anatomy</div>
+                            <div class="bracket"></div>
+                            <div class="tag-list">
+                                <strong>Vectorized Metadata</strong>
+                                <ul>
+                                    <li>Origin (x,y,z)</li>
+                                    <li>Spacing (x,y,z)</li>
+                                    <li>Direction Matrix</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="block-label">Heterogeneous Theranostic Batch</div>
                 </div>
+
+                <div class="block" style="justify-content: center;">
+                    <div class="arrow arrow-down" style="transform: rotate(-90deg); margin: 0 20px;">
+                        <div class="arrow-body"></div>
+                        <div class="arrow-head"></div>
+                    </div>
+                    <div class="transform-label">Simultaneous Resample & Rotation (45°)</div>
+                </div>
+
+                <div class="block">
+                    <div class="tensor-box">
+                        <div class="slice-stack-rot">
+                            <div class="slice-rot slice-1">SPECT AC</div>
+                            <div class="slice-rot slice-2">SPECT NAC</div>
+                            <div class="slice-rot slice-3">Dosemap</div>
+                            <div class="slice-rot slice-4">CT (Aligned)</div>
+                            <div class="bracket"></div>
+                            <div class="tag-list">
+                                <strong>Updated Metadata</strong>
+                                <ul>
+                                    <li>Origin (x,y,z)</li>
+                                    <li>Spacing (x,y,z)</li>
+                                    <li>Direction Matrix</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="block-label">Consistent Compound Affine Alignment</div>
+                    <div class="sub-label" style="font-weight: bold; margin-top: 5px; border-top: 1px solid black; padding-top: 5px;">SUV Precision Deviation < 1.5%</div>
+                </div>
+
             </div>
+
         </div>
 
     </div>
