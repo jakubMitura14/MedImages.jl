@@ -22,8 +22,8 @@ function load_patient_data(patient_dir::String)
     return ct_f, extract(ct_f), extract(spect_f), extract(dose_f)
 end
 
-function hu_to_density(hu::Real)
-    hu <= 0 ? max(0.01f0, 1.0f0 + 0.001f0 * Float32(hu)) : 1.0f0 + 0.0007f0 * Float32(hu)
+function hu_to_density(hu::Real; slope_air=0.001f0, slope_tissue=0.0007f0)
+    hu <= 0 ? max(0.01f0, 1.0f0 + slope_air * Float32(hu)) : 1.0f0 + slope_tissue * Float32(hu)
 end
 
 function ResBlock(channels::Int)
@@ -33,9 +33,11 @@ end
 function build_no_approx_model()
     width, depth = 32, 3
     layers = []
-    # ONLY 2 input branches: Activity, Density
-    branch_A = Conv((3, 3, 3), 1 => width, pad=1, relu); branch_ρ = Conv((3, 3, 3), 1 => width, pad=1, relu)
-    push!(layers, Parallel(+, branch_A, branch_ρ))
+    # 3 input branches: Activity, Density, Density Gradient (∇ρ)
+    branch_A = Conv((3, 3, 3), 1 => width, pad=1, relu)
+    branch_ρ = Conv((3, 3, 3), 1 => width, pad=1, relu)
+    branch_∇ρ = Conv((3, 3, 3), 1 => width, pad=1, relu)
+    push!(layers, Parallel(+, branch_A, branch_ρ, branch_∇ρ))
     for _ in 1:depth; push!(layers, ResBlock(width)); end
     push!(layers, Conv((3, 3, 3), width => 1, pad=1))
     return Chain(layers...)
@@ -43,6 +45,13 @@ end
 
 const NN_model = build_no_approx_model()
 const ps, st_init = Lux.setup(Random.default_rng(), NN_model)
+
+function compute_grad_rho(rho)
+    gx = rho[[2:end; end],:,:] .- rho[[1; 1:end-1],:,:]
+    gy = rho[:,[2:end; end],:] .- rho[:,[1; 1:end-1],:]
+    gz = rho[:,:,[2:end; end]] .- rho[:,:,[1; 1:end-1]]
+    return sqrt.(gx.^2 .+ gy.^2 .+ gz.^2 .+ 1e-6f0)
+end
 
 function predict_dosemap(p_state, theta_opt, A0)
     mass_map = p_state.vol_map .* p_state.ρ_map; ρ_map = p_state.ρ_map
@@ -54,8 +63,9 @@ function predict_dosemap(p_state, theta_opt, A0)
         dA_blood = - (k10_pop + λ_phys) * u.A_blood .- sum(f_pop * k_in_pop * u.A_blood) .+ sum(k_out_pop .* u.A_free)
         dA_free  = voxel_in .- (k_out_pop .* u.A_free) .- (λ_phys .* u.A_free)
         dA_bound = (k3 .* u.A_free .* (1.0f0 .- u.A_bound ./ B_MAX_val)) .- (k4 .* u.A_bound) .- (λ_phys .* u.A_bound)
-        # NO APPROX INPUT
-        inputs = (reshape(u.A_free .+ u.A_bound, size(A0)..., 1, 1), reshape(ρ_map, size(A0)..., 1, 1))
+        A_total = u.A_free .+ u.A_bound
+        grad_ρ_map = compute_grad_rho(ρ_map) # ∇ρ computation via finite differences
+        inputs = (reshape(A_total, size(A0)..., 1, 1), reshape(ρ_map, size(A0)..., 1, 1), reshape(grad_ρ_map, size(A0)..., 1, 1))
         nn_out, _ = Lux.apply(NN_model, inputs, p, st_fixed)
         dD_base = ((u.A_free .+ u.A_bound) .* DOSE_CONV) ./ (mass_map .+ 1f-4)
         dD_phys = softplus.(dD_base .+ reshape(nn_out, size(A0)))
@@ -71,7 +81,7 @@ function gradient_loss(pred, target)
     return sum(abs.(gx_p .- gx_t)) / length(gx_p)
 end
 
-function train_no_approx(dataset_dir::String, epochs::Int=15)
+function train_no_approx(dataset_dir::String, epochs::Int=15; CF=1.0f0, rescale_slope=1.0f0, RC=1.0f0)
     println("Training UDE (No Approx Dose Input)...")
     patients = sort(filter(isdir, readdir(dataset_dir, join=true)))
     dev = Lux.gpu_device(); θ = dev(ComponentArray(ps)); opt_state = Optimisers.setup(Optimisers.Adam(1f-3), θ)
@@ -89,7 +99,12 @@ function train_no_approx(dataset_dir::String, epochs::Int=15)
                 yr = clamp(cy-hx, 1, size(target,2)-p_size+1):clamp(cy-hx+p_size-1, p_size, size(target,2))
                 zr = clamp(cz-hx, 1, size(target,3)-p_size+1):clamp(cz-hx+p_size-1, p_size, size(target,3))
                 p_state = (vol_map=dev(fill(Float32(prod(ct_f.header.pixdim[2:4])), (32,32,32))), ρ_map=dev(hu_to_density.(ct_i[xr,yr,zr])), st=dev(st_init))
-                spect_p = dev(Float32.(spect_i[xr,yr,zr])); target_p = dev(Float32.(target[xr,yr,zr]))
+                
+                # Apply absolute quantification parameters: CF, Rescale Slope, and RC.
+                # Note: RC primarily matters for per-ROI dosimetry rather than per-voxel.
+                scaled_spect = (Float32.(spect_i[xr,yr,zr]) .* rescale_slope) ./ CF
+                spect_p = dev(scaled_spect .* RC)
+                target_p = dev(Float32.(target[xr,yr,zr]))
                 l, gs = Zygote.withgradient(t -> begin
                     pred = predict_dosemap(p_state, t, spect_p)
                     mae = sum(abs.(pred .- target_p)) / length(target_p)
