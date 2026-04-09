@@ -51,3 +51,5 @@ data/
 *.h5
 *.jls
 render_venv/
+test_data/volume-0.nii.gz
+.gitignore
