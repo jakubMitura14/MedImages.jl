@@ -88,7 +88,7 @@ function predict_ude_patch(model, θ, st, A0, den_raw, vol_p, patch_size, model_
     end
     
     prob = ODEProblem(ude_func_fast, u0, (0.0f0, 300.0f0), θ)
-    sol = solve(prob, Tsit5(), saveat=[300.0f0], reltol=5f-2, abstol=5f-2)
+    sol = solve(prob, Euler(), dt=15.0f0, saveat=[300.0f0])
     return sol.u[end].DOSE
 end
 
@@ -176,20 +176,7 @@ function run_ude_only_val()
         @error "64x64 checkpoint NOT found at $cp64"; return
     end
 
-    val_cases = String[]
-    split_file = "experiments/sciml_dose_refinement/splits.txt"
-    if isfile(split_file)
-        open(split_file, "r") do f
-            in_val = false
-            for line in eachline(f)
-                if occursin("VALIDATION:", line); in_val = true; continue; end
-                if occursin("TRAINING:", line); in_val = false; continue; end
-                if in_val && strip(line) != ""; push!(val_cases, strip(line)); end
-            end
-        end
-    else
-        val_cases = ["FDM_DPI-2024-7-KRN_Lu177_PSMA__SPECT_Tc_1__Pat48"]
-    end
+    val_cases = ["FDM_DPI-2024-7-KRN_Lu177_PSMA__SPECT_Tc_1__Pat48"]
 
     out_root = "val_outputs"; mkpath(out_root)
     metrics_file = open(joinpath(out_root, "metrics_ude.txt"), "a")
