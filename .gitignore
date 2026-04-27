@@ -59,3 +59,7 @@ val_outputs_parallel/
 val_outputs_comparison/
 *.mrb
 *.nii.gz
+diff_logs*.txt
+*.log
+article/images/*.png
+docs/src/experiments/viz/*.png
