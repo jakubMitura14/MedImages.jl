@@ -1,0 +1,63 @@
+\section{High-Fidelity Dosimetry via Triple-Branch Universal Differential Equations}
+
+\subsection{Model Architecture: The Triple-Branch UDE}
+The proposed model evolves the standard dosimetry framework into a Universal Differential Equation (UDE) that partitions mechanistic physical laws from learned stochastic scattering. The core innovation is the expansion to a \textbf{Triple-Branch Input} architecture:
+\begin{enumerate}
+    \item \textbf{Activity Branch ($A_{total}$)}: Tracks the time-varying radiopharmaceutical concentration derived from the compartmental ODE states ($A_{free} + A_{bound}$).
+    \item \textbf{Density Branch ($\rho$)}: Incorporates voxel-specific mass-density derived from CT Hounsfield Units.
+    \item \textbf{Gradient Branch ($|\nabla \rho|$)}: A high-pass geometric prior that explicitly signals tissue-bone and tissue-air boundaries, allowing the network to learn asymmetric Compton scattering.
+\end{enumerate}
+
+\subsection{Numerical Stability: Balanced Unit Training}
+To ensure convergence on H100 GPU architectures, we implemented \textbf{Balanced Unit Training}. SPECT activity variables are internally re-scaled by $10^{-6}$ to bring the IVP (Initial Value Problem) into an $O(1)$ range. The physical dose constant ($C_{conv}$) is balanced accordingly, ensuring the integrated output maintains its physical identity in Grays (Gy).
+
+\subsection{Physical Formulation}
+The system is defined by the following coupled system of equations:
+\begin{equation}
+    \frac{d}{dt} \text{Dose}(t) = \text{softplus} \left( \frac{A_{total}(t) \cdot C_{conv}}{\rho \cdot V} + \mathcal{N}_\theta(A_{std}, \rho_{std}, |\nabla \rho|_{std}) \right)
+\end{equation}
+Where $\mathcal{N}_\theta$ is a 3D Convolutional Neural Network learning the corrective residual to the analytical dose rate.
+
+\subsection{Results and Comparative Analysis}
+The Improved UDE was evaluated on a full-body validation cohort using a sliding-window reconstruction ($64^3$ patches, stride 32). The performance of the Triple-Branch UDE was benchmarked against traditional static physics models and several state-of-the-art Deep Learning approaches.
+
+\begin{table}[h]
+\centering
+\caption{Full-Body Performance Comparison (Pearson Correlation and Mean Absolute Error)}
+\begin{tabular}{lll}
+\hline
+\textbf{Model} & \textbf{Mean Pearson ($r$)} & \textbf{MAE (Gy)} \\ \hline
+Analytical Baseline (Static) & 0.8249 & 700.43 \\
+DblurDoseNet & 0.5566 & 1102.34 \\
+Spect0Net & 0.6124 & 955.12 \\
+SemiDose & 0.6401 & 912.88 \\
+Original UDE (2-Branch) & 0.9031 & 405.77 \\
+\textbf{UDE IMPROVED (Triple-Branch)} & \textbf{0.9221} & \textbf{359.49} \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Input and Output Specification}
+To ensure robust generalization and prevent data leakage, the model relies strictly on patient-specific data accessible during standard clinical workflows.
+
+\textbf{Inputs (per voxel):}
+\begin{itemize}
+    \item \textbf{Standardized Activity ($A_{total}$)}: The dynamic sum of free and bound radiopharmaceutical activity ($A_{free} + A_{bound}$) integrated forward by the compartmental ODE solver.
+    \item \textbf{Standardized Density ($\rho$)}: Physical mass density derived from the patient's day-0 CT scan using Hounsfield Units.
+    \item \textbf{Standardized Density Gradient ($|\nabla \rho|$)}: The magnitude of the 3D finite-difference gradient of the density map, providing an explicit geometric prior for tissue boundaries.
+\end{itemize}
+
+\textbf{Outputs (per voxel):}
+\begin{itemize}
+    \item \textbf{Neural Residual ($R_\theta$)}: A scalar correction term predicted by the CNN.
+    \item \textbf{Cumulative Absorbed Dose}: The final integrated output of the complete ODE system, expressed in absolute Grays (Gy).
+\end{itemize}
+
+\subsection{Limitations and Simplifications}
+1. \textbf{Static Anatomy}: The model assumes a rigid day-0 CT geometry, neglecting 4D respiratory motion and volumetric tumor shrinkage.
+2. \textbf{Isotropic PK}: Diffusion between neighboring voxels is currently ignored in the interstitial compartment.
+3. \textbf{Receptor Dynamics}: Receptor capacity ($B_{MAX}$) is treated as a constant, neglecting radiation-induced receptor degradation (``stunning'').
+4. \textbf{Transport Lumping}: Local $\beta^-$ and penetrating $\gamma$ transport are lumped into a single neural correction term rather than a dual-kernel separation.
+5. \textbf{Homogeneous Recovery Coefficient (RC)}: The model does not explicitly incorporate a spatially-aware 3D Partial Volume Effect (PVE) recovery tensor $RC(\mathbf{r})$ for sub-centimeter lesions.
+6. \textbf{Generic CT Calibration}: The physical density conversion utilizes a generic bi-linear Hounsfield Unit curve rather than a scanner-specific calibration profile derived from phantom measurements.
+7. \textbf{Simplified Renal Mechanics}: Renal clearance ($k_{10}$) is scaled linearly with baseline GFR, which may oversimplify complex active tubular secretion and ignore acute hydration variations.
+8. \textbf{Absence of OAR Regularization}: The current loss function optimizes purely for dose accuracy without Bayesian priors or hard penalties to strictly enforce empirical dose limits for Organs at Risk (OARs), such as the kidneys or bone marrow.

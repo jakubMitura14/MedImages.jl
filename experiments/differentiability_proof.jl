@@ -25,7 +25,7 @@ using MedImages.MedImage_data_struct
 using Flux
 using Zygote
 using ChainRulesCore
-using ForwardDiff
+using Enzyme
 using Statistics
 using Random
 using LinearAlgebra
@@ -36,12 +36,12 @@ using Dates
 # Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 
-const IMG_SIZE = 16       # 16×16×16 voxels
+const IMG_SIZE = 32       # 32×32×32 voxels
 const N_TRAIN = 100       # training samples
 const N_TEST = 20         # test samples
 const ANGLE_RANGE = 30.0  # ±30 degrees
-const EPOCHS = 50
-const LR = 1e-3
+const EPOCHS = 500
+const LR = 5e-4
 
 # Fixed datetime to avoid Zygote issues with Dates.now()
 const FIXED_DATE = DateTime(2024, 1, 1)
@@ -120,26 +120,46 @@ function generate_dataset(imagePrim::Array{Float32,3}, n_samples::Int)
 end
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 1.5 Extract Endpoints Helper
+# ═══════════════════════════════════════════════════════════════════════════════
+function extract_endpoints(img::Array{Float32, 3}, threshold=0.1f0)
+    coords = findall(img .> threshold)
+    if isempty(coords)
+        return [16.0, 16.0, 16.0], [16.0, 16.0, 16.0]
+    end
+    N = length(coords)
+    X = zeros(Float64, N, 3)
+    for i in 1:N
+        X[i, 1] = coords[i][1] - 1
+        X[i, 2] = coords[i][2] - 1
+        X[i, 3] = coords[i][3] - 1
+    end
+    
+    μ = mean(X, dims=1)
+    X_c = X .- μ
+    Cov = (X_c' * X_c) ./ (N - 1)
+    
+    F = eigen(Cov)
+    idx = argmax(real.(F.values))
+    principal_axis = real.(F.vectors[:, idx])
+    
+    projections = X_c * principal_axis
+    min_idx = argmin(projections[:, 1])
+    max_idx = argmax(projections[:, 1])
+    
+    p1 = X[min_idx, :]
+    p2 = X[max_idx, :]
+    
+    return p1, p2
+end
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 2. Differentiable 3D Rotation
-#
-# Pure Julia implementation using Euler rotation matrices and trilinear
-# interpolation. Gradients w.r.t. rotation angles are computed via
-# ForwardDiff through a custom ChainRulesCore rrule, enabling seamless
-# integration with Zygote's reverse-mode AD for the neural network.
-#
-# NOTE: MedImages' interpolate_pure already computes coordinate gradients
-# via Enzyme. To make rotate_mi itself angle-differentiable, one would
-# only need to rewrite the rotation matrix construction in pure Julia
-# (removing @non_differentiable annotations). This standalone version
-# serves as a clean proof-of-concept.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-"""
-    euler_rotation_matrix(angles_deg)
+using MedImages.Utils: interpolate_fused_affine
+using MedImages.MedImage_data_struct: Linear_en
 
-Build a 3×3 rotation matrix from Euler angles (degrees): Rz(az) * Ry(ay) * Rx(ax).
-Pure Julia (sin/cos only) — compatible with ForwardDiff Dual numbers.
-"""
 function euler_rotation_matrix(angles_deg)
     d2r = π / 180
     ax = angles_deg[1] * d2r
@@ -150,144 +170,47 @@ function euler_rotation_matrix(angles_deg)
     c2, s2 = cos(ay), sin(ay)
     c3, s3 = cos(az), sin(az)
 
-    # Rz * Ry * Rx  (column-major layout for reshape)
-    reshape([
-        c2*c3,           c2*s3,           -s2,
-        s1*s2*c3-c1*s3,  s1*s2*s3+c1*c3,  s1*c2,
-        c1*s2*c3+s1*s3,  c1*s2*s3-s1*c3,  c1*c2
-    ], 3, 3)
+    # Rz * Ry * Rx
+    return [
+        c2*c3           c2*s3           -s2;
+        s1*s2*c3-c1*s3  s1*s2*s3+c1*c3  s1*c2;
+        c1*s2*c3+s1*s3  c1*s2*s3-s1*c3  c1*c2
+    ]
 end
 
-"""
-    trilinear_sample(img, x, y, z)
-
-Sample a 3D array at continuous coordinates (x,y,z) using trilinear interpolation.
-Works with ForwardDiff Dual numbers: gradients flow through the interpolation
-weights (fractional parts) while integer floor indices are non-differentiable.
-"""
-function trilinear_sample(img, x, y, z)
-    sx, sy, sz = size(img)
-
-    x = clamp(x, 1.0, Float64(sx))
-    y = clamp(y, 1.0, Float64(sy))
-    z = clamp(z, 1.0, Float64(sz))
-
-    x0 = clamp(floor(Int, x), 1, sx)
-    y0 = clamp(floor(Int, y), 1, sy)
-    z0 = clamp(floor(Int, z), 1, sz)
-    x1 = min(x0 + 1, sx)
-    y1 = min(y0 + 1, sy)
-    z1 = min(z0 + 1, sz)
-
-    xd = x - x0
-    yd = y - y0
-    zd = z - z0
-
-    # Gather 8 corners
-    c000 = img[x0,y0,z0]; c100 = img[x1,y0,z0]
-    c010 = img[x0,y1,z0]; c110 = img[x1,y1,z0]
-    c001 = img[x0,y0,z1]; c101 = img[x1,y0,z1]
-    c011 = img[x0,y1,z1]; c111 = img[x1,y1,z1]
-
-    # Trilinear blend
-    c00 = c000 * (1 - xd) + c100 * xd
-    c01 = c001 * (1 - xd) + c101 * xd
-    c10 = c010 * (1 - xd) + c110 * xd
-    c11 = c011 * (1 - xd) + c111 * xd
-    c0  = c00  * (1 - yd) + c10  * yd
-    c1  = c01  * (1 - yd) + c11  * yd
-    return c0 * (1 - zd) + c1 * zd
-end
-
-"""Pre-compute centered grid coordinates for rotation (constant, not differentiated)."""
-function make_grid(sx, sy, sz)
-    cx = Float32((sx + 1) / 2)
-    cy = Float32((sy + 1) / 2)
-    cz = Float32((sz + 1) / 2)
-    N = sx * sy * sz
-    g = Matrix{Float32}(undef, 3, N)
-    idx = 1
-    for k in 1:sz, j in 1:sy, i in 1:sx
-        g[1, idx] = i - cx
-        g[2, idx] = j - cy
-        g[3, idx] = k - cz
-        idx += 1
-    end
-    return g
-end
-
-"""
-Core rotation implementation. Rotates a 3D image by Euler angles using trilinear
-interpolation. No AD-specific constructs — works with plain values and ForwardDiff Duals.
-"""
-function _rotate_impl(img::Array{Float32,3}, angles_deg, grid::Matrix{Float32})
-    R_inv = euler_rotation_matrix(angles_deg)'
-    src = R_inv * grid
-
-    sx, sy, sz = size(img)
-    cx = Float64((sx + 1) / 2)
-    cy = Float64((sy + 1) / 2)
-    cz = Float64((sz + 1) / 2)
-    src = src .+ [cx, cy, cz]
-
-    N = size(src, 2)
-    output = Vector{eltype(src)}(undef, N)
-    for n in 1:N
-        output[n] = trilinear_sample(img, src[1,n], src[2,n], src[3,n])
-    end
-
-    return reshape(output, sx, sy, sz)
-end
-
-"""
-    diff_rotate_3d(img, angles_deg, grid)
-
-Differentiable 3D rotation. Forward pass uses `_rotate_impl`; backward pass
-computes exact angle gradients via ForwardDiff (forward-mode AD through the
-rotation matrix and trilinear interpolation).
-"""
-function diff_rotate_3d(img::Array{Float32,3}, angles_deg, grid::Matrix{Float32})
-    return _rotate_impl(img, angles_deg, grid)
-end
-
-# Custom reverse-mode rule: angle gradients via ForwardDiff Jacobian
-function ChainRulesCore.rrule(::typeof(diff_rotate_3d), img, angles_deg, grid)
-    output = _rotate_impl(img, Float32.(angles_deg), grid)
-
-    function diff_rotate_pullback(Δ)
-        # ForwardDiff computes the exact Jacobian ∂output/∂angles (forward-mode).
-        # Only 3 forward passes (one per angle), each over N=sx*sy*sz voxels.
-        angles_f64 = Float64.(angles_deg)
-        J = ForwardDiff.jacobian(
-            a -> vec(_rotate_impl(img, a, grid)),
-            angles_f64
-        )
-        # Vector-Jacobian product: d_angles = J' * Δ_flat
-        d_angles = Float32.(J' * vec(Float64.(Δ)))
-        return NoTangent(), NoTangent(), d_angles, NoTangent()
-    end
-
-    return output, diff_rotate_pullback
+function diff_rotate_3d(img::Array{Float32,3}, angles_deg)
+    R_inv = Float32.(euler_rotation_matrix(angles_deg)')
+    
+    M_inv = [R_inv[1,1] R_inv[1,2] R_inv[1,3] 0.0f0;
+             R_inv[2,1] R_inv[2,2] R_inv[2,3] 0.0f0;
+             R_inv[3,1] R_inv[3,2] R_inv[3,3] 0.0f0;
+             0.0f0      0.0f0      0.0f0      1.0f0]
+    
+    M_inv_3d = reshape(M_inv, 4, 4, 1)
+    output_size = size(img)
+    reconstructed_flat = interpolate_fused_affine(img, M_inv_3d, output_size, Linear_en, false, 0.0f0, nothing)
+    
+    return reshape(reconstructed_flat, output_size...)
 end
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3. Neural Network Model
 # ═══════════════════════════════════════════════════════════════════════════════
 
-"""Build a simple 3D CNN + MLP that predicts 3 rotation angles from a 3D image."""
 function build_model()
     Chain(
-        # 3D CNN feature extraction
-        Conv((3,3,3), 1 => 8, relu; pad=1),
-        MaxPool((2,2,2)),
-        Conv((3,3,3), 8 => 16, relu; pad=1),
+        Conv((3,3,3), 1 => 16, relu; pad=1),
         MaxPool((2,2,2)),
         Conv((3,3,3), 16 => 32, relu; pad=1),
+        Conv((3,3,3), 32 => 32, relu; pad=1),
+        MaxPool((2,2,2)),
+        Conv((3,3,3), 32 => 64, relu; pad=1),
+        Conv((3,3,3), 64 => 64, relu; pad=1),
         GlobalMeanPool(),
         Flux.flatten,
-        # MLP head: predict 3 rotation angles
-        Dense(32 => 64, relu),
-        Dense(64 => 3)
+        Dense(64 => 128, relu),
+        Dense(128 => 128, relu),
+        Dense(128 => 3)
     )
 end
 
@@ -295,10 +218,9 @@ end
 # 4. Training Loop
 # ═══════════════════════════════════════════════════════════════════════════════
 
-"""Compute L2 loss for a single sample: rotate with predicted angles, compare to target."""
-function compute_loss(model, x_5d, img_3d, imagePrim, grid)
+function compute_loss(model, x_5d, img_3d, imagePrim)
     pred_angles = vec(model(x_5d))
-    reconstructed = diff_rotate_3d(img_3d, pred_angles, grid)
+    reconstructed = diff_rotate_3d(img_3d, pred_angles)
     return sum((reconstructed .- imagePrim) .^ 2) / length(imagePrim)
 end
 
@@ -307,123 +229,87 @@ function main()
 
     println("=" ^ 65)
     println("  Differentiability Proof: Learning Inverse 3D Rotations")
-    println("  MedImages.jl")
     println("=" ^ 65)
 
-    # ─── Generate Data ───────────────────────────────────────────────────────
     println("\n[1/4] Generating synthetic data...")
     imagePrim = create_line_image(IMG_SIZE)
-    println("  Image size: $(size(imagePrim))")
-    println("  Angle range: +/-$(ANGLE_RANGE) degrees")
+    
+    # Save the Gold Standard for plotting
+    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(imagePrim), "gold_standard.nii.gz")
 
-    print("  Generating $(N_TRAIN) training samples with rotate_mi... ")
     train_imgs, train_angles = generate_dataset(imagePrim, N_TRAIN)
-    println("done")
-
-    print("  Generating $(N_TEST) test samples with rotate_mi... ")
     test_imgs, test_angles = generate_dataset(imagePrim, N_TEST)
-    println("done")
+    
+    # Save the uncorrected (initial) rotated image for test sample 1
+    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(test_imgs[:,:,:,1,1]), "uncorrected.nii.gz")
 
-    # Baseline: L2 loss without any correction
     baseline_loss = mean([
         sum((train_imgs[:,:,:,1,i] .- imagePrim).^2) / length(imagePrim)
         for i in 1:N_TRAIN
     ])
     @printf("  Baseline L2 loss (no correction): %.6f\n", baseline_loss)
 
-    # ─── Build Model ─────────────────────────────────────────────────────────
     println("\n[2/4] Building CNN + MLP model...")
     model = build_model()
     opt_state = Flux.setup(Adam(LR), model)
-    # Count parameters
-    n_params = sum(length(p) for p in Flux.trainables(model))
-    println("  Total parameters: $(n_params)")
 
-    # Pre-compute rotation grid (constant across all samples)
-    grid = make_grid(IMG_SIZE, IMG_SIZE, IMG_SIZE)
-
-    # ─── Train ───────────────────────────────────────────────────────────────
-    println("\n[3/4] Training ($(EPOCHS) epochs, $(N_TRAIN) samples)...")
-    println("  Gradients flow: L2 loss -> trilinear interp -> rotation matrix -> CNN/MLP")
-    println("-" ^ 65)
-    @printf("  %-8s  %-18s  %-18s\n", "Epoch", "Avg Train Loss", "Avg Test Loss")
-    println("-" ^ 65)
-
-    train_history = Float32[]
+    println("\n[3/4] Training ($(EPOCHS) epochs)...")
+    
+    # Track endpoints
+    endpoints_history = []
+    
     test_history = Float32[]
-
     for epoch in 1:EPOCHS
         perm = randperm(N_TRAIN)
         epoch_loss = 0.0f0
-
         for i in perm
             x_5d = train_imgs[:,:,:,:,i:i]
             img_3d = train_imgs[:,:,:,1,i]
-
             loss_val, grads = Flux.withgradient(model) do m
-                compute_loss(m, x_5d, img_3d, imagePrim, grid)
+                compute_loss(m, x_5d, img_3d, imagePrim)
             end
-
             Flux.update!(opt_state, model, grads[1])
             epoch_loss += loss_val
         end
-
         avg_train = epoch_loss / N_TRAIN
-        push!(train_history, avg_train)
-
-        # Evaluate on test set periodically
+        
+        # Compute endpoints for visualization
+        x_5d_1 = test_imgs[:,:,:,:,1:1]
+        img_3d_1 = test_imgs[:,:,:,1,1]
+        pred_angles_1 = vec(model(x_5d_1))
+        reconstructed_1 = diff_rotate_3d(img_3d_1, pred_angles_1)
+        p1, p2 = extract_endpoints(reconstructed_1)
+        push!(endpoints_history, (epoch, p1, p2))
+        
         if epoch == 1 || epoch % 10 == 0 || epoch == EPOCHS
             test_loss = 0.0f0
             for i in 1:N_TEST
                 x_5d = test_imgs[:,:,:,:,i:i]
                 img_3d = test_imgs[:,:,:,1,i]
-                test_loss += compute_loss(model, x_5d, img_3d, imagePrim, grid)
+                test_loss += compute_loss(model, x_5d, img_3d, imagePrim)
             end
             avg_test = test_loss / N_TEST
             push!(test_history, avg_test)
-            @printf("  %-8d  %-18.6f  %-18.6f\n", epoch, avg_train, avg_test)
+            @printf("  Epoch %-4d | Train Loss: %.6f | Test Loss: %.6f\n", epoch, avg_train, avg_test)
         end
     end
 
-    println("-" ^ 65)
+    # Save reconstructed.nii.gz for final epoch
+    x_5d_1 = test_imgs[:,:,:,:,1:1]
+    img_3d_1 = test_imgs[:,:,:,1,1]
+    pred_angles_1 = vec(model(x_5d_1))
+    reconstructed_final = diff_rotate_3d(img_3d_1, pred_angles_1)
+    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(reconstructed_final), "reconstructed.nii.gz")
 
-    # ─── Results ─────────────────────────────────────────────────────────────
-    println("\n[4/4] Results")
-    println("=" ^ 65)
-
-    initial_test = test_history[1]
-    final_test = test_history[end]
-
-    @printf("  Baseline loss (no correction):     %.6f\n", baseline_loss)
-    @printf("  Initial loss  (untrained model):   %.6f\n", initial_test)
-    @printf("  Final loss    (trained model):     %.6f\n", final_test)
-    @printf("  Improvement over baseline:         %.1f%%\n", (1 - final_test/baseline_loss) * 100)
-    @printf("  Improvement over initial:          %.1f%%\n", (1 - final_test/initial_test) * 100)
-    println()
-
-    if final_test < baseline_loss * 0.7
-        println("  SUCCESS: Loss decreased significantly!")
-        println("  The rotation function is usefully differentiable.")
-        println("  Gradients flow through: L2 loss -> interpolation -> rotation angles -> CNN/MLP")
-    elseif final_test < baseline_loss * 0.95
-        println("  PARTIAL: Loss decreased. More training may improve results.")
-    else
-        println("  Loss did not decrease enough. Try more epochs or smaller angle range.")
+    # Save endpoints history
+    println("\n[4/4] Saving endpoints history...")
+    open("endpoints.csv", "w") do io
+        println(io, "epoch,p1x,p1y,p1z,p2x,p2y,p2z")
+        for (epoch, p1, p2) in endpoints_history
+            println(io, "$epoch,$(p1[1]),$(p1[2]),$(p1[3]),$(p2[1]),$(p2[2]),$(p2[3])")
+        end
     end
-
-    println()
-    println("  Technical notes:")
-    println("  - Data generated with MedImages.rotate_mi (3-axis sequential rotation)")
-    println("  - Training rotation: Euler angles Rz*Ry*Rx with trilinear interpolation")
-    println("  - Angle gradients: exact via ForwardDiff (forward-mode AD)")
-    println("  - Network gradients: Zygote (reverse-mode AD)")
-    println("  - MedImages' interpolate_pure already supports coordinate gradients")
-    println("    via Enzyme, so making rotate_mi angle-differentiable only requires")
-    println("    rewriting the rotation matrix construction in pure Julia.")
-    println("=" ^ 65)
-
-    return model, train_history, test_history
+    println("Done.")
 end
 
-# Run the proof
 main()

@@ -66,4 +66,11 @@ The "No-Approx UDE" implemented via Julia/SciML achieved the definitive state-of
 *   **Analytical Baseline (VSV):** Pearson $r = 0.9120$
 *   **DblurDoseNet (Deep Learning):** Pearson $r = 0.5566$
 
+## Data Leakage Prevention
+
+To ensure clinical validity, the UDE model is designed with strict data isolation:
+1. **Zero Ground-Truth Exposure**: The neural network $\mathcal{N}_\theta$ has no access to Monte Carlo labels during the forward pass. Its inputs are derived exclusively from the current ODE state (Activity) and anatomical priors (CT Density).
+2. **Blind Inference**: The sliding window reconstruction does not utilize any patient-wide global statistics (like maximum dose) that would be unavailable at runtime.
+3. **Compartmental Isolation**: The biological clearance rates and decay constants are fixed physical parameters, preventing the model from "cheating" by adjusting fundamental physics to fit specific noise patterns.
+
 By isolating mechanistic physics from complex scattering phenomena learned by the neural residual, the model captures the critical dose variance at tissue boundaries that traditional models fail to systematically track.
