@@ -1,4 +1,0 @@
-
->>> UDE_IMPROVED: RESUMING BALANCED UNIT TRAINING (LR 5e-5)
-Loading existing checkpoint from experiments/sciml_dose_refinement/data/checkpoints/UDE_IMPROVED_64/model_best.jls
-  Epoch 48 | Resumed Balanced Log-MSE: 1.7757201
