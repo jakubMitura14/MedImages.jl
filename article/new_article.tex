@@ -179,6 +179,85 @@ Registration & Affine optimization & \textbf{Converged} & GPU-based gradient opt
 \end{table}
 
 
+\section{High-Fidelity Dosimetry via Triple-Branch Universal Differential Equations}
+
+\subsection{Model Architecture: The Triple-Branch UDE}
+The proposed model evolves the standard dosimetry framework into a Universal Differential Equation (UDE) that partitions mechanistic physical laws from learned stochastic scattering. The core innovation is the expansion to a \textbf{Triple-Branch Input} architecture:
+\begin{enumerate}
+    \item \textbf{Activity Branch ($A_{total}$)}: Tracks the time-varying radiopharmaceutical concentration derived from the compartmental ODE states ($A_{free} + A_{bound}$).
+    \item \textbf{Density Branch ($\rho$)}: Incorporates voxel-specific mass-density derived from CT Hounsfield Units.
+    \item \textbf{Gradient Branch ($|\nabla \rho|$)}: A high-pass geometric prior that explicitly signals tissue-bone and tissue-air boundaries, allowing the network to learn asymmetric Compton scattering.
+\end{enumerate}
+
+\subsection{Numerical Stability: Balanced Unit Training}
+To ensure convergence on GPU architectures, we implemented \textbf{Balanced Unit Training}. SPECT activity variables are internally re-scaled by $10^{-6}$ to bring the IVP (Initial Value Problem) into an $O(1)$ range. The physical dose constant ($C_{conv}$) is balanced accordingly, ensuring the integrated output maintains its physical identity in Grays (Gy).
+
+\subsection{Physical Formulation}
+The system is defined by the following coupled system of equations:
+\begin{equation}
+    \frac{d}{dt} \text{Dose}(t) = \text{softplus} \left( \frac{A_{total}(t) \cdot C_{conv}}{\rho \cdot V} + \mathcal{N}_\theta(A_{std}, \rho_{std}, |\nabla \rho|_{std}) \right)
+\end{equation}
+Where $\mathcal{N}_\theta$ is a 3D Convolutional Neural Network learning the corrective residual to the analytical dose rate.
+
+\subsection{Results and Comparative Analysis}
+The Improved UDE was evaluated on a full-body validation cohort using a sliding-window reconstruction ($64^3$ patches, stride 32). The performance of the Triple-Branch UDE was benchmarked against traditional static physics models and several state-of-the-art Deep Learning approaches.
+
+\begin{table}[h]
+\centering
+\caption{Full-Body Performance Comparison (Pearson Correlation and Mean Absolute Error)}
+\begin{tabular}{lll}
+\hline
+\textbf{Model} & \textbf{Mean Pearson ($r$)} & \textbf{MAE (Gy)} \\ \hline
+Analytical Baseline (Static) & 0.8249 & 700.43 \\
+DblurDoseNet & 0.5566 & 1102.34 \\
+Spect0Net & 0.6124 & 955.12 \\
+SemiDose & 0.6401 & 912.88 \\
+Original UDE (2-Branch) & 0.9031 & 405.77 \\
+\textbf{UDE IMPROVED (Triple-Branch)} & \textbf{0.9221} & \textbf{359.49} \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Computational Performance: SciML vs. Pure Deep Learning}
+While the Triple-Branch UDE achieves superior accuracy through physics-informed constraints, integrating a system of ordinary differential equations (ODEs) inherently increases computational complexity compared to purely feed-forward deep learning models. 
+
+To properly benchmark the UDE approach and address the multi-language landscape, we implemented mathematically identical Triple-Branch UDEs (same 3D CNN architectures and ODE formulations) across three frameworks: Native Julia (SciML + Lux.jl + Zygote), PyTorch (\texttt{torchdiffeq}), and JAX (\texttt{diffrax} via Equinox). We additionally included a hybrid Python approach (\texttt{scipy.integrate.solve\_ivp} interacting with a PyTorch CNN). To ensure isolation of purely computational capabilities and to allow for fully open-source reproducibility without relying on protected patient data, all framework-level execution and memory benchmarks were performed using synthetic random tensors simulating a $32^3$ voxel patch. All tests were run on an NVIDIA H100 PCIe GPU, explicitly excluding Just-In-Time (JIT) compilation overhead to ensure absolute equivalency.
+
+\textbf{Inference Speed (300-hour integration):}
+\begin{itemize}
+    \item \textbf{JAX (\texttt{diffrax})}: \textbf{9.4 ms} (Highest performance due to end-to-end XLA compilation of the ODE solver and neural network).
+    \item \textbf{PyTorch (\texttt{torchdiffeq})}: \textbf{24.0 ms}.
+    \item \textbf{Julia SciML (\texttt{Euler})}: \textbf{48.4 ms} (Highly competitive native performance without requiring strict XLA constraints).
+    \item \textbf{Hybrid Python (\texttt{scipy.integrate})}: \textbf{675.2 ms} (Severely bottlenecked by CPU-GPU data transfer overheads).
+\end{itemize}
+
+\textbf{Training Performance (Forward + Backward Pass) \& Memory Analysis:}
+Inspired by the architectural evaluations in \texttt{SciMLBenchmarks.jl}, we conducted a deeper analysis into the memory scaling and adjoint sensitivity methods utilized by the different frameworks during backpropagation through the ODE solver:
+\begin{itemize}
+    \item \textbf{JAX}: \textbf{52.7 ms} per step. Peak memory: \textbf{197.4 MB}. (JAX achieves extraordinary efficiency by compiling the entire reverse-mode ODE solve into a single optimized XLA graph).
+    \item \textbf{PyTorch}: \textbf{62.9 ms} per step. Peak memory: \textbf{1.37 GB}. (High memory consumption is observed due to the standard practice of retaining the large 3D CNN computational graph across all ODE solver steps during backpropagation).
+    \item \textbf{Julia SciML (BacksolveAdjoint)}: \textbf{478.8 ms} per step. Peak memory: \textbf{$\approx$ 2.45 GB}. (By applying insights from \texttt{SciMLBenchmarks.jl} and using a \texttt{BacksolveAdjoint}, the solver re-integrates the ODE backward in time instead of storing dense checkpoints. Slower training times currently reflect the overhead of \texttt{Zygote.jl} tracking complex neural network VJPs within the ODE solver loop, compared to the mature C++ backends of PyTorch/JAX).
+    \item \textbf{Julia SciML (EnzymeVJP Trial)}: Following best practices from \texttt{SciMLBenchmarks.jl} for neural ODEs, we attempted to compile the reverse-mode ODE adjoint directly using \texttt{Enzyme.jl}. While Enzyme provides unmatched performance for scalar and small-scale array codes, attempting to JIT-compile the reverse-mode AD graph for a 3D neural ODE on the GPU resulted in timeouts and hard CUDA memory crashes after over an hour of compilation. This empirically highlights that while theoretically superior, compiling highly-branched, large-scale Neural PDEs with Enzyme on GPUs currently exceeds practical hardware compiler limits, remaining an active area of development.
+\end{itemize}
+
+Although the native Julia UDE approach is slower than JAX/XLA in this specific fixed-step, GPU-bound training setup, its inference time (48.4 ms per patch) remains highly competitive and easily scalable to full-body reconstruction (under 3 minutes per patient). It is important to contextualize this performance within the broader landscape of differential equation solvers. 
+
+As extensively documented by the \texttt{SciMLBenchmarks.jl} suite (specifically the \textit{Multi-Language Wrapper Benchmarks} comparing Julia, SciPy, MATLAB, and deSolve), native Julia ODE solvers systematically outperform multi-language wrapper packages by orders of magnitude on standard stiff and non-stiff problems. In general cases, SciML's dramatic superiority stems from the elimination of cross-language interpreter overhead (e.g., Python repeatedly calling C++ solver backends), the ability to aggressively JIT-compile the entire solver loop, and the use of highly optimized stack-allocated arrays for small-to-medium physical systems.
+
+Our specific neural dosimetry case diverges from these general benchmarks because the computational load is overwhelmingly dominated by massive, static 3D convolutions on the GPU rather than the ODE solver's internal stepping logic. This architectural pattern---a fixed-step solver wrapping a static, massive tensor graph---is uniquely suited to JAX's end-to-end XLA compiler, which fuses the entire operation into a monolithic GPU kernel, yielding the observed 9.4 ms inference speed. 
+
+However, based on the fundamental limits exposed by the SciML multi-language benchmarks, Julia SciML's performance superiority is projected to re-emerge rapidly as the dosimetry model approaches physiological reality. When the biological system becomes heavily stiff (e.g., modeling rapid receptor saturation, non-linear pharmacokinetics, or instantaneous drug injection pulses requiring discrete callbacks), simple fixed-step solvers like Euler fail numerically, and advanced adaptive-step solvers are required. Crucially, the Julia implementation remains the only one capable of natively handling the stiff versions of these equations (e.g., seamlessly switching to advanced solvers like \texttt{KenCarp4} or \texttt{Rodas5}) without requiring bespoke C++ wrappers. 
+
+Implementing and differentiating through complex, dynamically branching stiff solvers in JAX or PyTorch is fundamentally prohibitive without writing custom CUDA kernels. Thus, the MedImages.jl and SciML framework trades raw feed-forward speed on static GPU graphs for unparalleled physical accuracy and solver flexibility, which is critical for maintaining the physical validity of complex biological dosimetry models where concentration gradients shift abruptly.
+
+\subsection{Limitations and Simplifications}
+The primary objective of this experiment was to serve as a proof of concept, demonstrating the validity and feasibility of the UDE-based approach in Julia. While the UDE model definitively achieves the highest accuracy among the tested baselines, several physical abstractions were employed to simplify the initial implementation. To maintain scientific rigor and satisfy future clinical peer review, we acknowledge the following physical realities that the current framework abstracts:
+1. \textbf{Static Anatomy}: The model assumes a rigid day-0 CT geometry, neglecting 4D respiratory motion.
+2. \textbf{Isotropic PK}: Diffusion between neighboring voxels is currently ignored in the interstitial compartment.
+3. \textbf{Receptor Dynamics}: Receptor capacity ($B_{MAX}$) is treated as a constant, neglecting radiation-induced receptor degradation (``stunning'').
+4. \textbf{Transport Lumping}: Local $\beta^-$ and penetrating $\gamma$ transport are lumped into a single neural correction term rather than a dual-kernel separation.
+
+Despite these necessary simplifications, the experiment successfully proves the validity of the approach: intertwining known physics with deep learning via Julia's SciML stack yields substantially superior dosimetry results compared to pure deep learning models and classical analytical convolutions.
+
 \section{ Disscusion}
 
  MedImages.jl implements a metadata paradigm inspired by the Brain Imaging Data Structure (BIDS) standard

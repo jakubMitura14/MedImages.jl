@@ -23,7 +23,7 @@ end
 
 function benchmark_all()
     dev = Lux.gpu_device(); rng = Random.default_rng()
-    p_s = 64 # Use 64x64x64 for more realistic benchmark
+    p_s = 32 # Use 32x32x32 to avoid OOM on fragmented GPU
     
     # --- UDE Benchmark ---
     m_ude = build_ude_improved(32, 3); ps_u, st_ude = Lux.setup(rng, m_ude); θ_u = dev(ComponentArray(ps_u)); st_ude = dev(st_ude)

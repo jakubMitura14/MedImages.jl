@@ -88,7 +88,7 @@ class UDEFunc(eqx.Module):
         return du
 
 def benchmark_diffrax():
-    p_s = 64
+    p_s = 32
     key = jax.random.PRNGKey(0)
     keys = jax.random.split(key, 5)
     

@@ -9,7 +9,7 @@ def benchmark_pytorch_train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.reset_peak_memory_stats(device)
     
-    p_s = 64
+    p_s = 32
     cnn = UDE_CNN(32, 3).to(device)
     cnn.train()
     optimizer = torch.optim.Adam(cnn.parameters(), lr=1e-4)

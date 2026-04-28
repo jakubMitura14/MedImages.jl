@@ -84,7 +84,7 @@ class UDEFunc(nn.Module):
         return du
 
 def benchmark_torchdiffeq(device):
-    p_s = 64
+    p_s = 32
     cnn = UDE_CNN(32, 3).to(device)
     cnn.eval()
     
@@ -119,7 +119,7 @@ def benchmark_torchdiffeq(device):
     return avg_time
 
 def benchmark_scipy(device):
-    p_s = 64
+    p_s = 32
     cnn = UDE_CNN(32, 3).to(device)
     cnn.eval()
     

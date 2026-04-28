@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath("experiments/sciml_dose_refinement"))
 from benchmark_jax_ude import UDE_CNN, UDEFunc
 
 def benchmark_jax_train():
-    p_s = 64
+    p_s = 32
     key = jax.random.PRNGKey(0)
     keys = jax.random.split(key, 5)
     

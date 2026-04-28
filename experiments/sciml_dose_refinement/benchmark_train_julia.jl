@@ -16,7 +16,7 @@ end
 
 function benchmark_julia_train()
     dev = Lux.gpu_device(); rng = Random.default_rng()
-    p_s = 64
+    p_s = 32
     
     CUDA.reclaim()
     
@@ -44,7 +44,7 @@ function benchmark_julia_train()
     for _ in 1:2
         loss, gs = Zygote.withgradient(θ_u) do p
             prob = ODEProblem(f, u0, (0.0f0, 300.0f0), p)
-            sol = solve(prob, Tsit5(), saveat=[300.0f0], reltol=1e-1, abstol=1e-1, sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
+            sol = solve(prob, Euler(), dt=15.0f0, saveat=[300.0f0], sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
             sum((sol.u[end].DOSE .- target).^2) / p_s^3
         end
         Optimisers.update!(opt_state, θ_u, gs[1])
@@ -56,7 +56,7 @@ function benchmark_julia_train()
     for _ in 1:n_iters
         loss, gs = Zygote.withgradient(θ_u) do p
             prob = ODEProblem(f, u0, (0.0f0, 300.0f0), p)
-            sol = solve(prob, Tsit5(), saveat=[300.0f0], reltol=1e-1, abstol=1e-1, sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
+            sol = solve(prob, Euler(), dt=15.0f0, saveat=[300.0f0], sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
             sum((sol.u[end].DOSE .- target).^2) / p_s^3
         end
         Optimisers.update!(opt_state, θ_u, gs[1])
