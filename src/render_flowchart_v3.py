@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import nibabel as nib
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import matplotlib.pyplot as plt
 from scipy.ndimage import rotate, zoom
 
@@ -121,40 +121,64 @@ draw.text((W_FLOW//2, 40), "End-to-End Multi-Modal SciML Dosimetry Pipeline", fi
 
 # Adjust Y-positions to move images "up" within their sections
 img_y_offset = 70 # Higher images relative to header
-label_y_offset = 330 # Labels relative to header
+label_y_offset = 350 # Labels relative to header
 
 # Phase 1
 y_p1 = 120
-draw_phase_header(1, "Raw Clinical Modalities (Independent Orientations & Scales)", y_p1)
+draw_phase_header(1, "Raw Clinical Modalities (Unorganized Batches)", y_p1)
 images_p1 = ["spect_raw.png", "ct_raw.png", "dose_raw.png"]
 labels_p1 = ["Raw SPECT (-15°, 0.5x)", "Raw CT (+20°, 1.5x)", "Pseudo-MC (+35°, 0.4x)"]
 for i, (name, label) in enumerate(zip(images_p1, labels_p1)):
     try:
         im = Image.open(os.path.join(OUT_DIR, name)).resize((250, 250))
-        img.paste(im, (100 + i*350, y_p1 + img_y_offset))
+        # Add a subtle border so stacked dark images don't blend into one blob
+        im_border = ImageOps.expand(im, border=2, fill="#bdc3c7")
+        
+        # Haphazard offsets: 
+        # Base: slightly left and up
+        # Middle: slightly bottom and left
+        # Top: center
+        offsets = [(-20, -15), (-10, 20), (0, 0)]
+        for dx, dy in offsets:
+            img.paste(im_border, (100 + i*350 + dx, y_p1 + img_y_offset + dy))
+            
         draw.text((100 + i*350 + 125, y_p1 + label_y_offset), label, fill="#4b5563", font=f_label, anchor="mm")
     except Exception as e: print(f"Error loading {name}: {e}")
 
 # Arrow
-draw.text((W_FLOW//2, y_p1 + 380), "↓", fill="#9ca3af", font=f_title, anchor="mm")
+draw.text((W_FLOW//2, y_p1 + 400), "↓", fill="#9ca3af", font=f_title, anchor="mm")
 
 # Phase 2
 y_p2 = 550
-draw_phase_header(2, "Preprocessed & Batched (Unified Target Grid)", y_p2)
+draw_phase_header(2, "Preprocessed & Batched (Organized Target Grid)", y_p2)
 images_p2 = ["spect_aligned.png", "ct_aligned.png", "dose_aligned.png"]
 labels_p2 = ["Aligned SPECT", "Aligned CT", "Aligned Target Dose"]
 for i, (name, label) in enumerate(zip(images_p2, labels_p2)):
     try:
         im = Image.open(os.path.join(OUT_DIR, name)).resize((250, 250))
-        img.paste(im, (100 + i*350, y_p2 + img_y_offset))
+        im_border = ImageOps.expand(im, border=2, fill="#bdc3c7")
+        
+        # Orderly offsets: each moved 15px down and left (base is (-30, 30), middle is (-15, 15), top is (0,0))
+        # Wait, user requested: "moved 3 mm up and right" for the next layer. 
+        # If top is at (0,0), then the ones UNDER it should be down and left.
+        # Let's say top is (0,0), middle is (-15, 15), bottom is (-30, 30).
+        # Wait, if bottom is pasted first, then middle, then top:
+        # Bottom: (-30, 30) (left and down)
+        # Middle: (-15, 15)
+        # Top: (0, 0)
+        # This looks like they stack "up and right".
+        offsets = [(-30, 30), (-15, 15), (0, 0)]
+        for dx, dy in offsets:
+            img.paste(im_border, (100 + i*350 + dx, y_p2 + img_y_offset + dy))
+            
         draw.text((100 + i*350 + 125, y_p2 + label_y_offset), label, fill="#4b5563", font=f_label, anchor="mm")
     except Exception as e: print(f"Error loading {name}: {e}")
 
 # Arrow
-draw.text((W_FLOW//2, y_p2 + 380), "↓", fill="#9ca3af", font=f_title, anchor="mm")
+draw.text((W_FLOW//2, y_p2 + 400), "↓", fill="#9ca3af", font=f_title, anchor="mm")
 
 # Phase 3: SciML Module
-y_p3 = 980
+y_p3 = 1000
 draw.rectangle([100, y_p3, 1100, y_p3+220], fill="#f8fafc", outline="#64748b", width=2)
 draw.text((W_FLOW//2, y_p3 + 30), "3. Universal Differential Equations (Physics Constraints)", fill="#1e293b", font=f_phase, anchor="mm")
 math_txt = "D'(r, t) = (1/m(r)) * [A(t)*E*K + N(A, rho, grad_rho)]"
@@ -164,7 +188,7 @@ draw.text((W_FLOW//2, y_p3 + 120), math_txt, fill="#0f172a", font=f_math, anchor
 draw.text((W_FLOW//2, y_p3 + 240), "↓", fill="#9ca3af", font=f_title, anchor="mm")
 
 # Phase 4
-y_p4 = 1280
+y_p4 = 1300
 draw_phase_header(4, "Final Inference & Dosimetry Outputs", y_p4)
 images_p4 = ["ude_pat46.png", "sub_ude_pat46.png", "sub_base_pat46.png"]
 for i, name in enumerate(images_p4):
