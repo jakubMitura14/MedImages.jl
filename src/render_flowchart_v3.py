@@ -31,6 +31,22 @@ def save_slice(data, name, cmap="gray", vmin=None, vmax=None):
     plt.savefig(os.path.join(OUT_DIR, name), bbox_inches='tight', pad_inches=0, transparent=True)
     plt.close()
 
+def scale_fov(img_2d, scale_factor, pad_val=0):
+    h, w = img_2d.shape
+    new_h, new_w = int(h * scale_factor), int(w * scale_factor)
+    scaled = zoom(img_2d, scale_factor, order=1)
+    
+    out = np.full((h, w), pad_val, dtype=img_2d.dtype)
+    if scale_factor > 1:
+        start_h = (new_h - h) // 2
+        start_w = (new_w - w) // 2
+        out = scaled[start_h:start_h+h, start_w:start_w+w]
+    else:
+        start_h = (h - new_h) // 2
+        start_w = (w - new_w) // 2
+        out[start_h:start_h+new_h, start_w:start_w+new_w] = scaled
+    return out
+
 # -----------------------------------------------------------------------------
 # 2. ASSET GENERATION
 # -----------------------------------------------------------------------------
@@ -50,9 +66,9 @@ ct_coronal = ct_data[:, MID_Y, Z_START:Z_END]
 spect_coronal = spect_data[:, MID_Y, Z_START:Z_END]
 dose_coronal = dose_data[:, MID_Y, Z_START:Z_END]
 
-# Intensity Scaling (99th percentile for popping functional data)
-spect_vmax = np.percentile(spect_coronal, 99.5)
-dose_vmax = np.percentile(dose_coronal, 99.8)
+# Intensity Scaling (Balanced percentiles to make functional signal bright and clear)
+spect_vmax = np.percentile(spect_coronal, 98.0)
+dose_vmax = np.percentile(dose_coronal, 99.0)
 
 # PHASE 2: Aligned (Clean Coronal)
 print("Generating Phase 2 assets...")
@@ -63,20 +79,20 @@ save_slice(dose_coronal, "dose_aligned.png", cmap="hot", vmin=0, vmax=dose_vmax)
 # PHASE 1: Raw (Independent Misalignments)
 print("Generating Phase 1 assets...")
 
-# SPECT raw: Rotated -15, Scaled down significantly, Brightened
+# SPECT raw: Rotated -15, Scaled down to 50% FOV, even brighter
 spect_raw = rotate(spect_coronal, -15, reshape=False, mode='nearest')
-spect_raw = zoom(zoom(spect_raw, 0.7, order=1), 1.4, order=3)[:spect_coronal.shape[0], :spect_coronal.shape[1]]
-save_slice(spect_raw, "spect_raw.png", cmap="magma", vmin=0, vmax=spect_vmax * 0.7) # Brighter
+spect_raw = scale_fov(spect_raw, 0.5, pad_val=0)
+save_slice(spect_raw, "spect_raw.png", cmap="magma", vmin=0, vmax=spect_vmax * 0.5)
 
-# CT raw: Rotated +20, Scaled up, Windowed
+# CT raw: Rotated +20, Scaled up to 150% FOV
 ct_raw = rotate(ct_coronal, 20, reshape=False, mode='nearest')
-ct_raw = zoom(zoom(ct_raw, 1.2, order=1), 0.83, order=3)[:ct_coronal.shape[0], :ct_coronal.shape[1]]
+ct_raw = scale_fov(ct_raw, 1.5, pad_val=-1000) # -1000 HU is air
 save_slice(ct_raw, "ct_raw.png", vmin=VMIN, vmax=VMAX)
 
-# Dose raw: Rotated +35, Scaled down, Brightened
+# Dose raw: Rotated +35, Scaled down to 40% FOV, slightly less pronounced
 dose_raw = rotate(dose_coronal, 35, reshape=False, mode='nearest')
-dose_raw = zoom(zoom(dose_raw, 0.6, order=1), 1.6, order=3)[:dose_coronal.shape[0], :dose_coronal.shape[1]]
-save_slice(dose_raw, "dose_raw.png", cmap="hot", vmin=0, vmax=dose_vmax * 0.8) # Brighter
+dose_raw = scale_fov(dose_raw, 0.4, pad_val=0)
+save_slice(dose_raw, "dose_raw.png", cmap="hot", vmin=0, vmax=dose_vmax * 0.8)
 
 # -----------------------------------------------------------------------------
 # 3. PIL RECONSTRUCTION
@@ -109,9 +125,9 @@ label_y_offset = 330 # Labels relative to header
 
 # Phase 1
 y_p1 = 120
-draw_phase_header(1, "Raw Clinical Modalities (Independent Orientations)", y_p1)
+draw_phase_header(1, "Raw Clinical Modalities (Independent Orientations & Scales)", y_p1)
 images_p1 = ["spect_raw.png", "ct_raw.png", "dose_raw.png"]
-labels_p1 = ["Raw SPECT (-15°)", "Raw CT (+20°)", "Pseudo-MC (+35°)"]
+labels_p1 = ["Raw SPECT (-15°, 0.5x)", "Raw CT (+20°, 1.5x)", "Pseudo-MC (+35°, 0.4x)"]
 for i, (name, label) in enumerate(zip(images_p1, labels_p1)):
     try:
         im = Image.open(os.path.join(OUT_DIR, name)).resize((250, 250))
