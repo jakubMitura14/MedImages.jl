@@ -1,3 +1,15 @@
+\documentclass[a4paper,10pt]{elsarticle}
+\usepackage{lineno,hyperref}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{amsmath}
+
+\begin{document}
+
 \subsection*{Abstract}
 
 Rationale: Imaging data driven artificial intelligence research in Nuclear Medicine increasingly depends on large-scale multi-modal 3D/4D datasets (PET/SPECT with CT/MRI) that must be resampled, aligned and quantitatively normalized without losing the spatial and clinical metadata required for physical interpretation (e.g. SUV, absorbed dose). Existing pipelines often struggle with (1) biobank-scale volume and I/O overhead, (2) execution speed and the ``two-language'' barrier, (3) metadata drift when images are converted to raw arrays (4) and end-to-end differentiability for novel physics-informed machine learning.
@@ -28,7 +40,7 @@ To address these limitations, we developed MedImages.jl, a Julia-based imaging e
 
 MedImages.jl binds voxel data to spatial and acquisition metadata through typed image representations, so that the typical for preprocessing geometric operations update the underlying physical description rather than operating on detached arrays. Core operators like resampling, affine warping, orientation handling, cropping and padding are implemented as native Julia kernels with transparent GPU acceleration, reducing practical bottlenecks in repeated 3D processing, supporting multimodal synchronization through batched representations.
 
-The new framework is designed for interoperability with the broader Julia SciML ecosystem and with automatic differentiation libraries such as Zygote.jl and Enzyme.jl, which allows for differentiable spatial pipelines \cite{10.1145/3458817.3476165}. This permits geometric image operations to be incorporated directly into end-to-end optimization, allowing spatial transformations to influence model training rather than remain external preprocessing steps. Julia further reduces software fragmentation by enabling image transformations, reconstruction algorithms, numerical solvers, and optimization routines to operate within a single coherent framework instead of across separate software layers that must be manually linked \cite{RoeschGreener2023}. Since these compiler-level differentiation engines can act on arbitrary Julia code, gradients can propagate through solvers and GPU kernels without rewriting the underlying workflow in a specialized tensor framework \cite{Fischer\_2019}. 
+The new framework is designed for interoperability with the broader Julia SciML ecosystem and with automatic differentiation libraries such as Zygote.jl and Enzyme.jl, which allows for differentiable spatial pipelines \cite{10.1145/3458817.3476165}. This permits geometric image operations to be incorporated directly into end-to-end optimization, allowing spatial transformations to influence model training rather than remain external preprocessing steps. Julia further reduces software fragmentation by enabling image transformations, reconstruction algorithms, numerical solvers, and optimization routines to operate within a single coherent framework instead of across separate software layers that must be manually linked \cite{RoeschGreener2023}. Since these compiler-level differentiation engines can act on arbitrary Julia code, gradients can propagate through solvers and GPU kernels without rewriting the underlying workflow in a specialized tensor framework \cite{Fischer_2019}. 
 
 In this work, we evaluate MedImages.jl across nuclear medicine–relevant benchmarks and experiments, both in isolation and in integration with complementary Julia libraries, with emphasis on (i) scalability for large PET/CT cohorts with high preprocessing demands, (ii) execution speed without the maintenance costs of a two-language architecture, (iii)  metadata preservation to maintain the physical interpretability required for quantitative nuclear medicine, and (iv) differentiability of geometric operations for learned spatial transforms.
 
@@ -137,7 +149,13 @@ Gradient propagation across spatial operations followed expected analytical beha
 
 In learned transformation experiments, optimization of geometric parameters resulted in a reduction in reconstruction error exceeding 65\% within 20 training iterations, demonstrating effective end-to-end training. Affine registration tasks showed stable convergence using GPU-based gradient optimization, confirming that complex spatial transformations can be integrated directly into differentiable learning pipelines without external implementations.
 
- 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/option_red_blue.png}
+\caption{Learned inverse rotation trajectory across training epochs, demonstrating end-to-end spatial differentiability. The model progressively aligns the uncorrected volume (red) towards the gold standard (blue).}
+\label{fig:rotation}
+\end{figure}
+
 \begin{table}[H]
 \centering
 \caption{Summary of results across all experimental series.}
@@ -283,7 +301,7 @@ MedImages.jl & Typed Julia Struct & Explicit binding within struct & N/A (Native
 \hline
 \end{tabular}
 \label{tab:metadata_comparison}
-
+\end{table}
 
 Crucially, the spatial metadata (origin, spacing, direction) is vectorized. This design allows each 3D slice within the batch to maintain unique spatial properties while residing in a unified 4D tensor, facilitating efficient batched operations where identical geometric transformations can be dispatched to the GPU in a single pass. 
 
@@ -364,5 +382,7 @@ Reproducibility details (random seeds, code availability, parameter settings) & 
 \hline
 \end{tabular}
 \end{table}
-```
 
+
+
+\end{document}

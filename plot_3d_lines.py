@@ -89,7 +89,26 @@ def scale_coords(arr):
     # Scale from [0, 31] to [0, 127]
     return [v * (127.0 / 31.0) for v in arr]
 
-def plot_3d_lines():
+def rotate_points(x_arr, y_arr, cx, cy, angle_deg):
+    import math
+    angle_rad = math.radians(angle_deg)
+    cos_a = math.cos(angle_rad)
+    sin_a = math.sin(angle_rad)
+    
+    new_x = []
+    new_y = []
+    for x, y in zip(x_arr, y_arr):
+        # Translate to origin
+        tx, ty = x - cx, y - cy
+        # Rotate (clockwise for positive deg if we use -sin for clockwise, but let's just use standard)
+        # "Rotate 30 degrees right" = clockwise = angle_deg = -30
+        nx = tx * cos_a - ty * sin_a + cx
+        ny = tx * sin_a + ty * cos_a + cy
+        new_x.append(nx)
+        new_y.append(ny)
+    return new_x, new_y
+
+def plot_3d_lines(output_name="differentiability_3d_lines.png", elev=20, azim=45, color_scheme="blue_gradient"):
     try:
         # Load endpoints from CSV
         epochs = []
@@ -103,20 +122,22 @@ def plot_3d_lines():
                 epochs.append(epoch)
                 endpoints.append( ([p1x, p2x], [p1y, p2y], [p1z, p2z]) )
                 
-        # Choose epochs: first, last, and 4 in the middle
         n = len(epochs)
         indices = [0, n//5, 2*n//5, 3*n//5, 4*n//5, n-1]
         
         gx, gy, gz = extract_endpoints_nifti("gold_standard.nii.gz")
         ux, uy, uz = extract_endpoints_nifti("uncorrected.nii.gz")
 
-        # Determine the central region first to trim lines
+        # Determine the central region first
         all_x = gx + ux + [p[0][0] for p in endpoints] + [p[0][1] for p in endpoints]
         all_y = gy + uy + [p[1][0] for p in endpoints] + [p[1][1] for p in endpoints]
         all_z = gz + uz + [p[2][0] for p in endpoints] + [p[2][1] for p in endpoints]
         
-        center_x = (min(all_x) + max(all_x)) / 2.0 * (127.0/31.0)
-        center_y = (min(all_y) + max(all_y)) / 2.0 * (127.0/31.0)
+        cx_orig = (min(all_x) + max(all_x)) / 2.0
+        cy_orig = (min(all_y) + max(all_y)) / 2.0
+        
+        center_x = cx_orig * (127.0/31.0)
+        center_y = cy_orig * (127.0/31.0)
         center_z = (min(all_z) + max(all_z)) / 2.0 * (127.0/31.0)
         
         # Zoom window size in 128 space
@@ -125,80 +146,102 @@ def plot_3d_lines():
         y_lims = (max(0, center_y - ws/2), min(128, center_y + ws/2))
         z_lims = (max(0, center_z - ws/2), min(128, center_z + ws/2))
 
-        fig = plt.figure(figsize=(12, 10))
+        fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
 
         filled = np.zeros((128, 128, 128), dtype=bool)
         colors_grid = np.zeros((128, 128, 128, 4), dtype=np.float32)
 
         def add_line(x_arr, y_arr, z_arr, color, alpha=1.0, thickness=0):
-            sx = scale_coords(x_arr)
-            sy = scale_coords(y_arr)
+            # Rotate 30 degrees right (clockwise) before scaling
+            rx, ry = rotate_points(x_arr, y_arr, cx_orig, cy_orig, -30)
+            sx = scale_coords(rx)
+            sy = scale_coords(ry)
             sz = scale_coords(z_arr)
             pts = bresenham_3d(sx[0], sy[0], sz[0], sx[1], sy[1], sz[1])
             rgba = hex_to_rgba(color, alpha)
             for p in pts:
-                for dx in range(-thickness, thickness + 1):
-                    for dy in range(-thickness, thickness + 1):
-                        for dz in range(-thickness, thickness + 1):
-                            nx, ny, nz = p[0] + dx, p[1] + dy, p[2] + dz
-                            # Trim lines to the zoom window
-                            if x_lims[0] <= nx < x_lims[1] and \
-                               y_lims[0] <= ny < y_lims[1] and \
-                               z_lims[0] <= nz < z_lims[1]:
-                                filled[nx, ny, nz] = True
-                                colors_grid[nx, ny, nz] = rgba
+                nx, ny, nz = p[0], p[1], p[2]
+                if x_lims[0] <= nx < x_lims[1] and \
+                   y_lims[0] <= ny < y_lims[1] and \
+                   z_lims[0] <= nz < z_lims[1]:
+                    filled[nx, ny, nz] = True
+                    colors_grid[nx, ny, nz] = rgba
 
-        # All lines same thickness (0 = 1 voxel thick)
-        add_line(gx, gy, gz, '#2ecc71', alpha=0.9, thickness=0)
-        add_line(ux, uy, uz, '#e74c3c', alpha=0.6, thickness=0)
+        if color_scheme == "blue_gradient":
+            gold_color = '#00008b' # Dark Blue
+            uncor_color = '#e74c3c' # Red
+            # Iteration colors: Light to Dark Blue
+            iter_colors = ['#d1e5f0', '#92c5de', '#4393c3', '#2166ac', '#053061', '#000000']
+        else: # "red_blue_transition"
+            gold_color = '#2166ac' # Blue
+            uncor_color = '#b2182b' # Deep Red
+            # Transition from Reddish to Bluish
+            iter_colors = ['#ef8a62', '#fddbc7', '#f7f7f7', '#d1e5f0', '#67a9cf', '#2166ac']
 
-        colors = ['#b3cde0', '#8c96c6', '#8856a7', '#810f7c', '#4d004b', '#000000']
+        # Gold standard
+        add_line(gx, gy, gz, gold_color, alpha=0.9, thickness=0)
+        # Uncorrected
+        add_line(ux, uy, uz, uncor_color, alpha=0.7, thickness=0)
+
         for i, idx in enumerate(indices):
             ep = epochs[idx]
             px, py, pz = endpoints[idx]
-            alpha = 0.4 + 0.6 * (i / (len(indices) - 1))
-            add_line(px, py, pz, colors[i], alpha=alpha, thickness=0)
+            alpha = 0.5 + 0.5 * (i / (len(indices) - 1))
+            add_line(px, py, pz, iter_colors[i], alpha=alpha, thickness=0)
 
         ax.voxels(filled, facecolors=colors_grid, edgecolors='k', linewidth=0.1)
 
         import matplotlib.patches as mpatches
         legend_elements = [
-            mpatches.Patch(color='#2ecc71', alpha=0.9, label='Gold Standard'),
-            mpatches.Patch(color='#e74c3c', alpha=0.6, label='Uncorrected (Input)')
+            mpatches.Patch(color=gold_color, alpha=0.9, label='Gold Standard'),
+            mpatches.Patch(color=uncor_color, alpha=0.7, label='Uncorrected')
         ]
         for i, idx in enumerate(indices):
             ep = epochs[idx]
-            alpha = 0.4 + 0.6 * (i / (len(indices) - 1))
-            legend_elements.append(mpatches.Patch(color=colors[i], alpha=alpha, label=f'Epoch {ep}'))
+            legend_elements.append(mpatches.Patch(color=iter_colors[i], alpha=0.7, label=f'Epoch {ep}'))
 
-        ax.set_title("3D Differentiable Proof: Rotation Learning", fontsize=18, fontweight='bold', pad=30)
-        
+        ax.set_title(f"3D Voxel View: {output_name.replace('.png','')}", fontsize=14, fontweight='bold')
         ax.set_xlim(x_lims)
         ax.set_ylim(y_lims)
         ax.set_zlim(z_lims)
         
-        ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-        ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-        ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        # Restore background axes and grid
+        ax.grid(True)
+        ax.xaxis.set_pane_color((0.95, 0.95, 0.95, 1.0))
+        ax.yaxis.set_pane_color((0.95, 0.95, 0.95, 1.0))
+        ax.zaxis.set_pane_color((0.95, 0.95, 0.95, 1.0))
         
-        ax.set_xticks(np.linspace(x_lims[0], x_lims[1], 4, dtype=int))
-        ax.set_yticks(np.linspace(y_lims[0], y_lims[1], 4, dtype=int))
-        ax.set_zticks(np.linspace(z_lims[0], z_lims[1], 4, dtype=int))
+        ax.set_xticks(np.linspace(x_lims[0], x_lims[1], 5, dtype=int))
+        ax.set_yticks(np.linspace(y_lims[0], y_lims[1], 5, dtype=int))
+        ax.set_zticks(np.linspace(z_lims[0], z_lims[1], 5, dtype=int))
         
-        ax.set_xlabel("X", fontsize=12)
-        ax.set_ylabel("Y", fontsize=12)
-        ax.set_zlabel("Z", fontsize=12)
+        ax.set_xlabel("X-axis", fontsize=10)
+        ax.set_ylabel("Y-axis", fontsize=10)
+        ax.set_zlabel("Z-axis", fontsize=10)
         
-        ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(0.85, 0.9), fontsize=10, frameon=True)
+        # Move legend closer
+        ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(0.95, 0.9), fontsize=9, frameon=True)
 
-        ax.view_init(elev=20, azim=45)
-
-        plt.tight_layout()
-        plt.savefig("/home/user/MedImages.jl/docs/src/experiments/viz/differentiability_3d_lines.png", dpi=300, bbox_inches='tight')
-        print("Successfully saved differentiability_3d_lines.png")
+        ax.view_init(elev=elev, azim=azim)
+        plt.savefig(output_name, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved {output_name}")
     except Exception as e:
-        print(f"Error plotting 3D: {e}")
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    import os
+    os.makedirs("viz_options", exist_ok=True)
+    # Option 1: Blue Gradient (as requested)
+    plot_3d_lines("viz_options/option_blue_gradient.png", elev=20, azim=45, color_scheme="blue_gradient")
+    # Option 2: Red-Blue Transition
+    plot_3d_lines("viz_options/option_red_blue.png", elev=20, azim=45, color_scheme="red_blue_transition")
+    # Option 3: Top View (to see 60 degrees clearly)
+    plot_3d_lines("viz_options/option_top_view.png", elev=90, azim=-90, color_scheme="blue_gradient")
+    
+    # Also overwrite the default one for the article
+    plot_3d_lines("differentiability_3d_lines.png", elev=30, azim=40, color_scheme="blue_gradient")
 
 if __name__ == "__main__":
     plot_3d_lines()
