@@ -47,6 +47,13 @@ In this work, we evaluate MedImages.jl across nuclear medicine–relevant benchm
 
 \section{Methods}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=1.0\linewidth]{figures/study_flowchart.png}
+\caption{End-to-End Multi-Modal SciML Dosimetry Pipeline. Phase 1 shows raw clinical modalities in coronal view with typical acquisition misalignments (rotation and scaling discrepancies). Phase 2 demonstrates the result of unified preprocessing and batch alignment on a shared grid with soft-tissue windowed CT. Phase 3 illustrates the integration of these data into the Universal Differential Equation (UDE) framework. Phase 4 displays the final dosimetry inference and error residuals compared to Monte Carlo ground truth.}
+\label{fig:flowchart}
+\end{figure}
+
 MedImages.jl was developed to address several practical requirements that are highly relevant in medical imaging, including preservation of image geometry and acquisition metadata, reliable handling of clinical image formats, efficient processing of large multimodal datasets, and support for optimization-based learning workflows. 
 A central design feature is the \verb|MedImage| data structure, which stores voxel values together with essential spatial information such as image position, voxel spacing, orientation, patient identity, and acquisition time. This avoids a common problem in AI-oriented workflows, where images are converted into generic tensors and thereby lose information needed to interpret them in physical space \cite{}. 
 For robust reading and writing of clinical formats such as DICOM and NIfTI, MedImages.jl uses ITK through a wrapper interface, whereas spatial operations such as rotation, translation, and resampling are implemented directly in Julia language. This design combines the reliability of a mature medical imaging toolkit for file handling with the flexibility to use spatial operations in modern learning and optimization pipelines. 

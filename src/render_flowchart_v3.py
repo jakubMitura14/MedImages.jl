@@ -1,0 +1,165 @@
+import os
+import numpy as np
+import nibabel as nib
+from PIL import Image, ImageDraw, ImageFont
+import matplotlib.pyplot as plt
+from scipy.ndimage import rotate, zoom
+
+# -----------------------------------------------------------------------------
+# 1. CONFIG & PATHS
+# -----------------------------------------------------------------------------
+OUT_DIR = "article/figures/images"
+FINAL_OUT = "article/figures/study_flowchart.png"
+os.makedirs(OUT_DIR, exist_ok=True)
+
+BASE_DIR = "data/dosimetry_data/FDM_DPI-2024-7-KRN_Lu177_PSMA__SPECT_Tc_0__Pat47"
+CT_PATH = os.path.join(BASE_DIR, "ct.nii.gz")
+SPECT_PATH = os.path.join(BASE_DIR, "spect.nii.gz")
+DOSE_PATH = os.path.join(BASE_DIR, "dosemap_mc.nii.gz")
+
+# Soft Tissue Window
+L, W = 40, 400
+VMIN, VMAX = L - W/2, L + W/2
+
+def apply_window(data, vmin, vmax):
+    return np.clip((data - vmin) / (vmax - vmin), 0, 1)
+
+def save_slice(data, name, cmap="gray", vmin=None, vmax=None):
+    plt.figure(figsize=(4, 4))
+    plt.imshow(np.flipud(data.T), cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+    plt.axis('off')
+    plt.savefig(os.path.join(OUT_DIR, name), bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close()
+
+# -----------------------------------------------------------------------------
+# 2. ASSET GENERATION
+# -----------------------------------------------------------------------------
+print("Loading data...")
+ct_data = nib.load(CT_PATH).get_fdata()
+spect_data = nib.load(SPECT_PATH).get_fdata()
+dose_data = nib.load(DOSE_PATH).get_fdata()
+if dose_data.ndim == 4:
+    dose_data = dose_data[..., 0]
+
+# Crop from liver to top of head (approx Z=250 to 508)
+Z_START = 250
+Z_END = 508
+MID_Y = 128
+
+ct_coronal = ct_data[:, MID_Y, Z_START:Z_END]
+spect_coronal = spect_data[:, MID_Y, Z_START:Z_END]
+dose_coronal = dose_data[:, MID_Y, Z_START:Z_END]
+
+# Intensity Scaling (99th percentile for popping functional data)
+spect_vmax = np.percentile(spect_coronal, 99.5)
+dose_vmax = np.percentile(dose_coronal, 99.8)
+
+# PHASE 2: Aligned (Clean Coronal)
+print("Generating Phase 2 assets...")
+save_slice(ct_coronal, "ct_aligned.png", vmin=VMIN, vmax=VMAX)
+save_slice(spect_coronal, "spect_aligned.png", cmap="magma", vmin=0, vmax=spect_vmax)
+save_slice(dose_coronal, "dose_aligned.png", cmap="hot", vmin=0, vmax=dose_vmax)
+
+# PHASE 1: Raw (Independent Misalignments)
+print("Generating Phase 1 assets...")
+
+# SPECT raw: Rotated -15, Scaled down significantly, Brightened
+spect_raw = rotate(spect_coronal, -15, reshape=False, mode='nearest')
+spect_raw = zoom(zoom(spect_raw, 0.7, order=1), 1.4, order=3)[:spect_coronal.shape[0], :spect_coronal.shape[1]]
+save_slice(spect_raw, "spect_raw.png", cmap="magma", vmin=0, vmax=spect_vmax * 0.7) # Brighter
+
+# CT raw: Rotated +20, Scaled up, Windowed
+ct_raw = rotate(ct_coronal, 20, reshape=False, mode='nearest')
+ct_raw = zoom(zoom(ct_raw, 1.2, order=1), 0.83, order=3)[:ct_coronal.shape[0], :ct_coronal.shape[1]]
+save_slice(ct_raw, "ct_raw.png", vmin=VMIN, vmax=VMAX)
+
+# Dose raw: Rotated +35, Scaled down, Brightened
+dose_raw = rotate(dose_coronal, 35, reshape=False, mode='nearest')
+dose_raw = zoom(zoom(dose_raw, 0.6, order=1), 1.6, order=3)[:dose_coronal.shape[0], :dose_coronal.shape[1]]
+save_slice(dose_raw, "dose_raw.png", cmap="hot", vmin=0, vmax=dose_vmax * 0.8) # Brighter
+
+# -----------------------------------------------------------------------------
+# 3. PIL RECONSTRUCTION
+# -----------------------------------------------------------------------------
+print("Reconstructing flowchart via PIL...")
+W_FLOW, H_FLOW = 1200, 1800
+img = Image.new('RGB', (W_FLOW, H_FLOW), color='white')
+draw = ImageDraw.Draw(img)
+
+try:
+    f_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    f_title = ImageFont.truetype(f_path, 40)
+    f_phase = ImageFont.truetype(f_path, 30)
+    f_label = ImageFont.truetype(f_path, 22)
+    f_math = ImageFont.truetype(f_path, 28)
+except:
+    f_title = f_phase = f_label = f_math = ImageFont.load_default()
+
+def draw_phase_header(num, text, y):
+    draw.rectangle([50, y, 1150, y+60], fill="#f3f4f6", outline="#d1d5db")
+    draw.text((70, y+10), f"{num}", fill="black", font=f_phase)
+    draw.text((120, y+10), text, fill="#374151", font=f_phase)
+
+# Title
+draw.text((W_FLOW//2, 40), "End-to-End Multi-Modal SciML Dosimetry Pipeline", fill="#1f2937", font=f_title, anchor="mm")
+
+# Adjust Y-positions to move images "up" within their sections
+img_y_offset = 70 # Higher images relative to header
+label_y_offset = 330 # Labels relative to header
+
+# Phase 1
+y_p1 = 120
+draw_phase_header(1, "Raw Clinical Modalities (Independent Orientations)", y_p1)
+images_p1 = ["spect_raw.png", "ct_raw.png", "dose_raw.png"]
+labels_p1 = ["Raw SPECT (-15°)", "Raw CT (+20°)", "Pseudo-MC (+35°)"]
+for i, (name, label) in enumerate(zip(images_p1, labels_p1)):
+    try:
+        im = Image.open(os.path.join(OUT_DIR, name)).resize((250, 250))
+        img.paste(im, (100 + i*350, y_p1 + img_y_offset))
+        draw.text((100 + i*350 + 125, y_p1 + label_y_offset), label, fill="#4b5563", font=f_label, anchor="mm")
+    except Exception as e: print(f"Error loading {name}: {e}")
+
+# Arrow
+draw.text((W_FLOW//2, y_p1 + 380), "↓", fill="#9ca3af", font=f_title, anchor="mm")
+
+# Phase 2
+y_p2 = 550
+draw_phase_header(2, "Preprocessed & Batched (Unified Target Grid)", y_p2)
+images_p2 = ["spect_aligned.png", "ct_aligned.png", "dose_aligned.png"]
+labels_p2 = ["Aligned SPECT", "Aligned CT", "Aligned Target Dose"]
+for i, (name, label) in enumerate(zip(images_p2, labels_p2)):
+    try:
+        im = Image.open(os.path.join(OUT_DIR, name)).resize((250, 250))
+        img.paste(im, (100 + i*350, y_p2 + img_y_offset))
+        draw.text((100 + i*350 + 125, y_p2 + label_y_offset), label, fill="#4b5563", font=f_label, anchor="mm")
+    except Exception as e: print(f"Error loading {name}: {e}")
+
+# Arrow
+draw.text((W_FLOW//2, y_p2 + 380), "↓", fill="#9ca3af", font=f_title, anchor="mm")
+
+# Phase 3: SciML Module
+y_p3 = 980
+draw.rectangle([100, y_p3, 1100, y_p3+220], fill="#f8fafc", outline="#64748b", width=2)
+draw.text((W_FLOW//2, y_p3 + 30), "3. Universal Differential Equations (Physics Constraints)", fill="#1e293b", font=f_phase, anchor="mm")
+math_txt = "D'(r, t) = (1/m(r)) * [A(t)*E*K + N(A, rho, grad_rho)]"
+draw.text((W_FLOW//2, y_p3 + 120), math_txt, fill="#0f172a", font=f_math, anchor="mm")
+
+# Arrow
+draw.text((W_FLOW//2, y_p3 + 240), "↓", fill="#9ca3af", font=f_title, anchor="mm")
+
+# Phase 4
+y_p4 = 1280
+draw_phase_header(4, "Final Inference & Dosimetry Outputs", y_p4)
+images_p4 = ["ude_pat46.png", "sub_ude_pat46.png", "sub_base_pat46.png"]
+for i, name in enumerate(images_p4):
+    try:
+        im = Image.open(os.path.join(OUT_DIR, name))
+        w_im, h_im = im.size
+        new_h = 300
+        new_w = int(w_im * (new_h / h_im))
+        im = im.resize((new_w, new_h))
+        img.paste(im, (100 + i*350, y_p4 + img_y_offset))
+    except Exception as e: print(f"Error loading {name}: {e}")
+
+img.save(FINAL_OUT)
+print(f"Flowchart successfully saved to {FINAL_OUT}")
