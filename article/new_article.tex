@@ -215,7 +215,14 @@ The system is defined by the following coupled system of equations:
 \begin{equation}
     \frac{d}{dt} \text{Dose}(t) = \text{softplus} \left( \frac{A_{total}(t) \cdot C_{conv}}{\rho \cdot V} + \mathcal{N}_\theta(A_{std}, \rho_{std}, |\nabla \rho|_{std}) \right)
 \end{equation}
-Where $\mathcal{N}_\theta$ is a 3D Convolutional Neural Network learning the corrective residual to the analytical dose rate.
+Where $\mathcal{N}_\theta$ is a 3D Convolutional Neural Network learning the corrective residual to the analytical dose rate. 
+
+The formulation integrates three distinct computational logic blocks:
+\begin{enumerate}
+    \item \textbf{Analytical Physics Term}: The component $\frac{A_{total}(t) \cdot C_{conv}}{\rho \cdot V}$ represents the local energy deposition. Here, $A_{total}(t)$ is the sum of free and bound compartmental activity, $C_{conv}$ is the dose conversion constant, and the denominator $\rho \cdot V$ calculates the voxel mass (Density $\times$ Volume), ensuring the result maintains the physical unit of Grays (Gy).
+    \item \textbf{Neural Network Residual}: The term $\mathcal{N}_\theta(A_{std}, \rho_{std}, |\nabla \rho|_{std})$ acts as a learned correction for stochastic effects such as asymmetric Compton scattering. By utilizing a Triple-Branch input (standardized activity, density, and the density gradient $|\nabla \rho|$), the model explicitly identifies tissue boundaries where classical analytical kernels typically fail.
+    \item \textbf{Differentiable Positivity}: The entire rate is wrapped in a \textit{softplus} activation function. This ensures that the generated dose remains non-negative while providing a smooth, continuously differentiable surface required for stable backpropagation through the ODE solver during end-to-end SciML training.
+\end{enumerate}
 
 \subsection{Results and Comparative Analysis}
 The Improved UDE was evaluated on a full-body validation cohort using a sliding-window reconstruction ($64^3$ patches, stride 32). The performance of the Triple-Branch UDE was benchmarked against traditional static physics models and several state-of-the-art Deep Learning approaches.

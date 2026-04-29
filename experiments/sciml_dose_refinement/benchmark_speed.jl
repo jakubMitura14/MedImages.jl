@@ -1,5 +1,5 @@
 using Pkg
-Pkg.activate("/home/user/MedImages.jl")
+Pkg.activate(".")
 
 using DifferentialEquations, Lux, LuxCUDA, CUDA, BenchmarkTools, Random, ComponentArrays, SciMLSensitivity
 
