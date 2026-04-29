@@ -121,13 +121,13 @@ draw.text((W_FLOW//2, 40), "End-to-End Multi-Modal SciML Dosimetry Pipeline", fi
 
 # Adjust Y-positions to move images "up" within their sections
 img_y_offset = 70 # Higher images relative to header
-label_y_offset = 350 # Labels relative to header
+label_y_offset = 380 # Labels moved lower
 
 # Phase 1
 y_p1 = 120
 draw_phase_header(1, "Raw Clinical Modalities (Unorganized Batches)", y_p1)
 images_p1 = ["spect_raw.png", "ct_raw.png", "dose_raw.png"]
-labels_p1 = ["Raw SPECT (-15°, 0.5x)", "Raw CT (+20°, 1.5x)", "Pseudo-MC (+35°, 0.4x)"]
+labels_p1 = ["Raw SPECT", "Raw CT", "Pseudo-MC"]
 for i, (name, label) in enumerate(zip(images_p1, labels_p1)):
     try:
         im = Image.open(os.path.join(OUT_DIR, name)).resize((250, 250))
