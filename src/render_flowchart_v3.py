@@ -179,27 +179,62 @@ draw.text((W_FLOW//2, y_p2 + 400), "↓", fill="#9ca3af", font=f_title, anchor="
 
 # Phase 3: SciML Module
 y_p3 = 1000
-draw.rectangle([100, y_p3, 1100, y_p3+220], fill="#f8fafc", outline="#64748b", width=2)
-draw.text((W_FLOW//2, y_p3 + 30), "3. Universal Differential Equations (Physics Constraints)", fill="#1e293b", font=f_phase, anchor="mm")
-math_txt = "D'(r, t) = (1/m(r)) * [A(t)*E*K + N(A, rho, grad_rho)]"
-draw.text((W_FLOW//2, y_p3 + 120), math_txt, fill="#0f172a", font=f_math, anchor="mm")
+draw.rectangle([100, y_p3, 1100, y_p3+250], fill="#f8fafc", outline="#64748b", width=2)
+draw.text((W_FLOW//2, y_p3 + 30), "3. The Julia Ecosystem (End-to-End Differentiable Imaging)", fill="#1e293b", font=f_phase, anchor="mm")
 
-# Arrow
-draw.text((W_FLOW//2, y_p3 + 240), "↓", fill="#9ca3af", font=f_title, anchor="mm")
+# Draw a stylized Julia logo
+jx, jy = 180, y_p3 + 100
+r = 22
+draw.ellipse([jx, jy, jx+r*2, jy+r*2], fill="#cb3c33") # Red
+draw.ellipse([jx-25, jy+40, jx-25+r*2, jy+40+r*2], fill="#389826") # Green
+draw.ellipse([jx+25, jy+40, jx+25+r*2, jy+40+r*2], fill="#9558b2") # Purple
+
+# Library chips
+chips = ["Zygote.jl", "Enzyme.jl", "SciML", "Radiomics.jl", "Makie.jl", "Lux.jl"]
+chip_x, chip_y = 330, y_p3 + 80
+for i, chip in enumerate(chips):
+    cx = chip_x + (i%3)*220
+    cy = chip_y + (i//3)*60
+    draw.rectangle([cx, cy, cx+180, cy+45], fill="#e2e8f0", outline="#94a3b8", width=1)
+    draw.text((cx+90, cy+22), chip, fill="#334155", font=f_label, anchor="mm")
+
+# Simplified Equation
+math_txt = "D'(r, t) = Physical_Priors + Neural_Corrector(Data)"
+draw.text((W_FLOW//2, y_p3 + 210), math_txt, fill="#0f172a", font=f_math, anchor="mm")
+
+# Branching Arrows
+y_arr = y_p3 + 250
+draw.line([(W_FLOW//2, y_arr), (W_FLOW//2, y_arr+30)], fill="#9ca3af", width=4) # Down
+draw.line([(350, y_arr+30), (850, y_arr+30)], fill="#9ca3af", width=4) # Horizontal
+draw.line([(350, y_arr+30), (350, y_arr+60)], fill="#9ca3af", width=4) # Down Left
+draw.line([(850, y_arr+30), (850, y_arr+60)], fill="#9ca3af", width=4) # Down Right
+
+# Arrow heads
+draw.polygon([(340, y_arr+50), (360, y_arr+50), (350, y_arr+65)], fill="#9ca3af")
+draw.polygon([(840, y_arr+50), (860, y_arr+50), (850, y_arr+65)], fill="#9ca3af")
 
 # Phase 4
-y_p4 = 1300
-draw_phase_header(4, "Final Inference & Dosimetry Outputs", y_p4)
-images_p4 = ["ude_pat46.png", "sub_ude_pat46.png", "sub_base_pat46.png"]
-for i, name in enumerate(images_p4):
-    try:
-        im = Image.open(os.path.join(OUT_DIR, name))
-        w_im, h_im = im.size
-        new_h = 300
-        new_w = int(w_im * (new_h / h_im))
-        im = im.resize((new_w, new_h))
-        img.paste(im, (100 + i*350, y_p4 + img_y_offset))
-    except Exception as e: print(f"Error loading {name}: {e}")
+y_p4 = y_arr + 90
+draw_phase_header(4, "Endless Applications: Dosimetry, Biomarkers, and Beyond", y_p4)
+
+# Left Image (Dosimetry UDE)
+try:
+    im = Image.open(os.path.join(OUT_DIR, "ude_pat46.png"))
+    w_im, h_im = im.size
+    new_h = 280
+    new_w = int(w_im * (new_h / h_im))
+    im = im.resize((new_w, new_h))
+    img.paste(im, (350 - new_w//2, y_p4 + 80))
+    draw.text((350, y_p4 + 390), "SciML Dosimetry Inference", fill="#4b5563", font=f_label, anchor="mm")
+except Exception as e: print(f"Error loading ude: {e}")
+
+# Right Dots
+try:
+    f_huge = ImageFont.truetype(f_path, 140)
+except:
+    f_huge = ImageFont.load_default()
+draw.text((850, y_p4 + 200), "...", fill="#9ca3af", font=f_huge, anchor="mm")
+draw.text((850, y_p4 + 390), "Novel Scientific Workflows", fill="#4b5563", font=f_label, anchor="mm")
 
 img.save(FINAL_OUT)
 print(f"Flowchart successfully saved to {FINAL_OUT}")
