@@ -206,6 +206,19 @@ function run_comprehensive_eval_64()
         c_base = cor(reshape(ap_i[xr,yr,zr], :), reshape(target, :))
         save_mip_png(target, joinpath(pat_out_dir, "ground_truth.png"))
 
+        # SAVE RAW DATA FOR PAT44
+        if occursin("Pat44", pat)
+            println(">>> Saving raw comparison data for Pat44 (.bin files)...")
+            write(joinpath(pat_out_dir, "ct.bin"), Array(ct_i[xr,yr,zr]))
+            write(joinpath(pat_out_dir, "mc.bin"), Array(target))
+            write(joinpath(pat_out_dir, "baseline.bin"), Array(ap_i[xr,yr,zr]))
+            write(joinpath(pat_out_dir, "ude_imp.bin"), p_imp)
+            write(joinpath(pat_out_dir, "ude_noapp.bin"), p_noapp)
+            write(joinpath(pat_out_dir, "cnn_imp.bin"), p_cnn_imp_r)
+            write(joinpath(pat_out_dir, "cnn_app.bin"), p_cnn_app_phys)
+            write(joinpath(pat_out_dir, "pure_cnn.bin"), p_pure_r)
+        end
+
         println(rpad(pat[end-5:end], 35) * " | " * rpad(round(c_imp, digits=4), 10) * " | " * rpad(round(c_noapp, digits=4), 10) * " | " * rpad(round(c_cnn_imp, digits=4), 10) * " | " * rpad(round(c_cnn_app, digits=4), 10) * " | " * rpad(round(c_pure, digits=4), 10) * " | " * rpad(round(c_base, digits=4), 10))
     end
     println("="^120)

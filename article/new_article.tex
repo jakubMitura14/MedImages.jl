@@ -148,6 +148,13 @@ In iterative training scenarios, MedImages.jl demonstrated substantially reduced
 
 GPU acceleration further amplified performance gains across core spatial operations. For medium-sized volumes ($256 \times 256 \times 128$), resampling, orientation changes, and affine transformations achieved speedups exceeding one to two orders of magnitude compared with CPU execution, with additional improvements over standard CPU-based libraries. In large-scale settings ($512^3$ target grid, $n=100$), per-subject processing times remained below 200~ms, confirming suitability for high-throughput and biobank-scale workflows.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=1.0\linewidth]{figures/full_body_comparison_3x3.png}
+\caption{Full-Body Multi-Model Error Analysis (Pat46). Top row: Anatomic Reference (CT), Ground Truth (Monte Carlo), and Analytical Baseline. Middle and bottom rows: Residual error maps (MC - Model) for all tested architectures. The UDE model shows the highest fidelity with minimal structured residuals in high-uptake regions.}
+\label{fig:full_body_3x3}
+\end{figure}
+
 \subsection*{Evaluation of Metadata Integrity and Quantitative Fidelity}
 Quantitative validation demonstrated numerical agreement with the reference standard at machine precision for SUV calculations, with differences on the order of $10^{-14}$. Across compound spatial transformations, mean SUV changed only minimally (from 3.49 to 3.47), and lesion volume remained stable (from approximately 52.6~cm$^3$ to 51.9~cm$^3$), corresponding to relative deviations below 1--2\%. These differences are consistent with expected interpolation effects and do not indicate degradation of clinical metadata.
 
@@ -232,7 +239,7 @@ The formulation integrates three distinct computational logic blocks:
 \end{enumerate}
 
 \subsection{Results and Comparative Analysis}
-The Improved UDE was evaluated on a full-body validation cohort using a sliding-window reconstruction ($64^3$ patches, stride 32). The performance of the Triple-Branch UDE was benchmarked against traditional static physics models and several state-of-the-art Deep Learning approaches.
+The UDE model was evaluated on a full-body validation cohort using a sliding-window reconstruction ($64^3$ patches, stride 32). The performance of the Triple-Branch UDE was benchmarked against traditional static physics models and several state-of-the-art Deep Learning approaches.
 
 \begin{table}[h]
 \centering
@@ -246,7 +253,7 @@ Spect0Net & 0.6124 & 955.12 \\
 SemiDose & 0.6401 & 912.88 \\
 CNN+Approx (Hybrid) & 0.8924 & 482.11 \\
 Original UDE (2-Branch) & 0.9031 & 405.77 \\
-\textbf{UDE IMPROVED (Triple-Branch)} & \textbf{0.9221} & \textbf{359.49} \\ \hline
+\textbf{UDE (Triple-Branch)} & \textbf{0.9221} & \textbf{359.49} \\ \hline
 \end{tabular}
 \end{table}
 
