@@ -47,11 +47,13 @@ def run():
         plt.subplots_adjust(wspace=0.01, hspace=0.1)
         
         # ---------------------------------------------------------------------
-        # SHAPE NORMALIZATION (Each to [0, 1])
+        # GLOBAL SHAPE NORMALIZATION (All models scaled to global max)
         # ---------------------------------------------------------------------
-        vmax_mc = np.percentile(mc, 99.5) if mc is not None else 1.0
-        if vmax_mc == 0: vmax_mc = 1.0
-        mc_norm = mc / (vmax_mc + 1e-6) if mc is not None else np.zeros(shape)
+        valid_preds = [mc] + [p for n, p in models_sub if p is not None]
+        global_p_max = max([np.percentile(np.abs(p), 99.5) for p in valid_preds])
+        if global_p_max == 0: global_p_max = 1.0
+
+        mc_norm = mc / global_p_max if mc is not None else np.zeros(shape)
         mc_mip_norm = get_mip(mc_norm)
         mask_mip = mc_mip_norm < 0.10
 
@@ -63,36 +65,50 @@ def run():
         axes[0, 1].imshow(mc_mip_norm, cmap='hot', vmin=0, vmax=1.0)
         axes[0, 1].set_title("Ground Truth (Monte Carlo)", fontsize=18)
 
-        ude_norm = ude / (np.percentile(np.abs(ude), 99.5) + 1e-6) if ude is not None else np.zeros(shape)
+        ude_norm = ude / global_p_max if ude is not None else np.zeros(shape)
         axes[0, 2].imshow(get_mip(ude_norm), cmap='hot', vmin=0, vmax=1.0)
         axes[0, 2].set_title("UDE Prediction (Ours)", fontsize=18)
 
+        # Pre-calculate subtractions to find global min/max of error
+        sub_mips = []
+        for name, pred in models_sub:
+            if pred is None:
+                sub_mips.append(None)
+                continue
+            p_norm = pred / global_p_max
+            sub_raw = mc_norm - p_norm
+            sub_mips.append(get_mip(sub_raw))
+            
+        # Exclude "CNN Improved" from the scale search as it is a known extreme outlier 
+        # that squashes the color range for all other models.
+        valid_sub_mips_no_outlier = [sm for (name, _), sm in zip(models_sub, sub_mips) 
+                                     if sm is not None and "CNN Improved" not in name]
+        
+        if valid_sub_mips_no_outlier:
+            # Use 98th percentile for robust clipping of remaining minor outliers
+            global_s_min = min([np.percentile(sm[~mask_mip], 2.0) for sm in valid_sub_mips_no_outlier])
+            global_s_max = max([np.percentile(sm[~mask_mip], 98.0) for sm in valid_sub_mips_no_outlier])
+        else:
+            global_s_min, global_s_max = -0.3, 0.3
+            
+        # Ensure symmetric colormap around 0
+        max_abs_err = max(abs(global_s_min), abs(global_s_max))
+        if max_abs_err == 0: max_abs_err = 0.3
+
         # Rows 2-3: Subtractions
         im = None
-        for idx, (name, pred) in enumerate(models_sub):
+        for idx, ((name, pred), sub_mip) in enumerate(zip(models_sub, sub_mips)):
             row = (idx // 3) + 1
             col = idx % 3
 
-            if pred is None:
+            if sub_mip is None:
                 axes[row, col].text(0.5, 0.5, "Data Missing", ha='center')
                 continue
 
-            # Normalize model prediction to ITS OWN max for shape comparison
-            p_peak = np.percentile(np.abs(pred), 99.5)
-            p_norm = pred / (p_peak + 1e-6)
+            final_sub_mip = np.ma.masked_where(mask_mip, sub_mip)
 
-            # Subtraction of normalized volumes
-            sub_raw = mc_norm - p_norm
-            sub_mip = get_mip(sub_raw)
-            
-            # RESIDUAL NORMALIZATION: center at 0
-            s_min = np.percentile(sub_mip[~mask_mip], 0.5)
-            s_max = np.percentile(sub_mip[~mask_mip], 99.5)
-            sub_centered = (sub_mip - s_min) / (s_max - s_min + 1e-6) - 0.5
-
-            final_sub_mip = np.ma.masked_where(mask_mip, sub_centered)
-
-            im = axes[row, col].imshow(final_sub_mip, cmap='RdBu_r', vmin=-0.5, vmax=0.5)
+            # Use vmin/vmax with symmetric max_abs_err to keep 0 at white
+            im = axes[row, col].imshow(final_sub_mip, cmap='RdBu_r', vmin=-max_abs_err, vmax=max_abs_err)
             im.cmap.set_bad(color='white')
 
             axes[row, col].set_title(f"Error Pattern: {name}", fontsize=16)
