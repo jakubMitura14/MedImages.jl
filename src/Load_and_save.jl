@@ -78,7 +78,16 @@ Load a medical image from file using SimpleITK via PyCall.
 function load_image(path::String, type::String)::MedImage
   sitk = pyimport("SimpleITK")
   
-  img = sitk.ReadImage(path)
+  img = nothing
+  if isdir(path)
+      # Assume DICOM series
+      reader = sitk.ImageSeriesReader()
+      dicom_names = reader.GetGDCMSeriesFileNames(path)
+      reader.SetFileNames(dicom_names)
+      img = reader.Execute()
+  else
+      img = sitk.ReadImage(path)
+  end
   
   # SimpleITK image to array returns [z, y, x]
   voxel_arr_np = sitk.GetArrayFromImage(img)

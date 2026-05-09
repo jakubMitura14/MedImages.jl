@@ -224,6 +224,9 @@ function compute_loss(model, x_5d, img_3d, imagePrim)
     return sum((reconstructed .- imagePrim) .^ 2) / length(imagePrim)
 end
 
+const OUTPUT_ARTIFACT_DIR = "data/validation"
+mkpath(OUTPUT_ARTIFACT_DIR)
+
 function main()
     Random.seed!(42)
 
@@ -235,13 +238,13 @@ function main()
     imagePrim = create_line_image(IMG_SIZE)
     
     # Save the Gold Standard for plotting
-    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(imagePrim), "gold_standard.nii.gz")
+    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(imagePrim), joinpath(OUTPUT_ARTIFACT_DIR, "gold_standard.nii.gz"))
 
     train_imgs, train_angles = generate_dataset(imagePrim, N_TRAIN)
     test_imgs, test_angles = generate_dataset(imagePrim, N_TEST)
     
     # Save the uncorrected (initial) rotated image for test sample 1
-    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(test_imgs[:,:,:,1,1]), "uncorrected.nii.gz")
+    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(test_imgs[:,:,:,1,1]), joinpath(OUTPUT_ARTIFACT_DIR, "uncorrected.nii.gz"))
 
     baseline_loss = mean([
         sum((train_imgs[:,:,:,1,i] .- imagePrim).^2) / length(imagePrim)
@@ -299,11 +302,11 @@ function main()
     img_3d_1 = test_imgs[:,:,:,1,1]
     pred_angles_1 = vec(model(x_5d_1))
     reconstructed_final = diff_rotate_3d(img_3d_1, pred_angles_1)
-    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(reconstructed_final), "reconstructed.nii.gz")
+    MedImages.Load_and_save.create_nii_from_medimage(make_medimage(reconstructed_final), joinpath(OUTPUT_ARTIFACT_DIR, "reconstructed.nii.gz"))
 
     # Save endpoints history
     println("\n[4/4] Saving endpoints history...")
-    open("endpoints.csv", "w") do io
+    open(joinpath(OUTPUT_ARTIFACT_DIR, "endpoints.csv"), "w") do io
         println(io, "epoch,p1x,p1y,p1z,p2x,p2y,p2z")
         for (epoch, p1, p2) in endpoints_history
             println(io, "$epoch,$(p1[1]),$(p1[2]),$(p1[3]),$(p2[1]),$(p2[2]),$(p2[3])")
