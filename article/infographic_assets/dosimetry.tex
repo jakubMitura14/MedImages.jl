@@ -46,8 +46,6 @@
     backgroundcolor  = \color{gray!5},
     breaklines       = true
 }
-\subsection{Results and Comparative Analysis}
-The Improved UDE was evaluated on a full-body validation cohort using a sliding-window reconstruction ($64^3$ patches, stride 32). To assess the trade-off between physical fidelity and computational cost, we benchmarked all models on a representative full-body SPECT/CT volume ($256 \times 256 \times 345$). Table~\ref{tab:dosimetry_comparison} summarizes both the predictive accuracy and the full-body inference execution time.
 
 \title{\textbf{Learning High-Fidelity Monte Carlo Dosimetry from SPECT/CT using Universal Differential Equations for $^{177}$Lu-PSMA Therapy}}
 \author{Scientific Machine Learning (SciML) Implementation Guide}
@@ -58,11 +56,11 @@ The Improved UDE was evaluated on a full-body validation cohort using a sliding-
 \maketitle
 
 \begin{abstract}
-Targeted radiopharmaceutical therapy (TRT) using Lutetium-177 Prostate-Specific Membrane Antigen ($^{177}$Lu-PSMA) requires highly accurate, patient-specific voxel-level dosimetry. This paper presents a exhaustive programmatic framework using \texttt{DifferentialEquations.jl} and the SciML ecosystem to formulate a Universal Differential Equation (UDE). By embedding a neural network corrector within the radiation transport equations, we rapidly learn the complex transformation from homogeneous kernel convolutions to high-fidelity Monte Carlo (MC) dosemaps. This implementation explicitly incorporates all established physical, biological, and imaging variables for $^{177}$Lu-PSMA, including system-specific calibration, saturable receptor kinetics, and biphasic clearance.
+Targeted radiopharmaceutical therapy (TRT) using $^{177}$Lu-PSMA requires highly accurate, patient-specific voxel-level dosimetry. This paper presents a exhaustive programmatic framework using \texttt{DifferentialEquations.jl} and the SciML ecosystem to formulate a Universal Differential Equation (UDE). By embedding a neural network corrector within the radiation transport equations, we rapidly learn the complex transformation from homogeneous kernel convolutions to high-fidelity MC dosemaps. This implementation explicitly incorporates all established physical, biological, and imaging variables for $^{177}$Lu-PSMA, including system-specific calibration, saturable receptor kinetics, and biphasic clearance.
 \end{abstract}
 
 \section{Introduction}
-Scientific Machine Learning (SciML) offers a path to bridge the gap between fast but inaccurate analytical models and slow gold-standard Monte Carlo (MC) simulations by combining \textbf{Universal Differential Equations (UDEs)} with patient-specific anatomical Computed Tomography (CT) and functional Single-Photon Emission Computed Tomography (SPECT) data \cite{KennedyLugassi2020}.
+Scientific Machine Learning (SciML) offers a path to bridge the gap between fast but inaccurate analytical models and slow gold-standard Monte Carlo (MC) simulations by combining \textbf{Universal Differential Equations (UDEs)} with patient-specific anatomical (CT) and functional (SPECT) data \cite{KennedyLugassi2020}.
 
 \section{Learning Objectives: Known Physics vs. Data-Driven Discovery}
 
@@ -73,7 +71,7 @@ The UDE framework partitions the dosimetry problem into \textit{Mechanistic Know
 \begin{itemize}
     \item \textbf{Radiological Constants:} Physical decay constant $\lambda_{phys} = 4.34 \times 10^{-3} \text{ h}^{-1}$ and mean energy per decay $\bar{E}_i$ \cite{ReschFouladgar2023, StabinMadsen2019}.
     \item \textbf{Conservation of Mass:} Mass-balance equations for tracer movement between the central blood compartment and tissue voxels. For $^{177}$Lu-PSMA, the \textbf{blood circulation rate} $\lambda_{bc}$ is defined as $\ln(2)/1 \text{ min} \approx 41.58 \text{ h}^{-1}$, representing a circulation half-life of 1 minute to model the rapid initial organ uptake post-injection \cite{HardiansyahYousefzadehNowshahr2024}.
-    \item \textbf{Renal Clearance Scaling:} Excretion rate $k_{10}$ scales with individual estimated Glomerular Filtration Rate (eGFR) \cite{HardiansyahYousefzadehNowshahr2024}.
+    \item \textbf{Renal Clearance Scaling:} Excretion rate $k_{10}$ scales with individual Glomerular Filtration Rate (GFR) \cite{HardiansyahYousefzadehNowshahr2024}.
     \item \textbf{Imaging Corrections:} Initial activity scaling via the \textbf{Camera Calibration Factor} ($CF$) and resolution recovery via \textbf{Recovery Coefficients} ($RC$). $CF$ is derived from DICOM tags \texttt{(0054,1001)} (Units, e.g., Bq/ml or counts/s/MBq) and quantified using \texttt{(0028,1053)} (Rescale Slope) and \texttt{(0028,1052)} (Rescale Intercept) to convert raw counts to activity \cite{GleisnerChouin2022}. $RC$ values are applied as structure-specific look-up tables based on object size (e.g., from NEMA phantom measurements) to correct for Partial Volume Effects (PVE) \cite{KlettingSchimmel2015}.
 \end{itemize}
 
@@ -159,7 +157,7 @@ Mean Energies & $E_\beta, E_\gamma$ & Physics & Isotope properties: Beta $\appro
 Deposition Kernels & $K_{\beta, lung}, K_{\gamma, water}$ & Physics & 3D probability convolution matrices pre-computed offline via Monte Carlo simulations. \\
 Blood Circulation & $\lambda_{bc}$ & Mechanics & Defined as $\ln(2)/1 \text{ min} \approx 41.58 \text{ h}^{-1}$ to model rapid mass-balance movement. \\ \midrule
 \multicolumn{4}{c}{\textbf{4. Patient Clinical Data \& Biological Literature}} \\ \midrule
-Renal Excretion & $k_{10}$ & Clinical Labs & Scaled dynamically using the individual patient's estimated Glomerular Filtration Rate (eGFR) blood lab results. \\
+Renal Excretion & $k_{10}$ & Clinical Labs & Scaled dynamically using the individual patient's Glomerular Filtration Rate (eGFR) blood lab results. \\
 Specific Activity & $SA_{MBq/nmol}$ & Radiopharmacy & The exact molar stoichiometry of the radiopharmaceutical batch prepared for the specific patient. \\
 Base PK Rates & $k_{in}, k_{out}, k_3, k_4, k_5$ & Literature & Initialization priors governing base tumor uptake, washout, and cell internalization sourced from trials. \\
 Radiobiology Limits & $\alpha, \beta, \lambda_{repair}$ & Literature & Constants for Sublethal Damage Repair (SLDR) and multi-track interactions. \\ \\ \midrule
@@ -187,7 +185,7 @@ The observed SPECT activity $A_{obs}(\mathbf{r}, 0)$ must be scaled before integ
 \begin{equation}
     A_{true}(\mathbf{r}, 0) = \frac{\left( A_{obs}(\mathbf{r}, 0) \cdot \text{Rescale Slope} \right) + \text{Rescale Intercept}}{CF \cdot RC(\mathbf{r})}
 \end{equation}
-Furthermore, applying an empirical Recovery Coefficient ($RC(\mathbf{r})$) dynamically at the voxel level is statistically unstable and risks violently amplifying high-frequency Gibbs artifacts at lesion edges; instead, it must be restricted strictly to \textit{bounding Region of Interest (ROI) volumes}.
+Furthermore, applying an empirical Recovery Coefficient ($RC(\mathbf{r})$) dynamically at the voxel level is statistically unstable and risks violently amplifying high-frequency Gibbs artifacts at lesion edges; instead, it must be restricted strictly to \textit{bounding ROI volumes}.
 
 \subsection{The Govering System of Equations}
 \textbf{1. PK Sub-system (Voxel-Wise Surface Binding, Endosomal Recycling, and Lysosomal Degradation):}
@@ -199,8 +197,8 @@ To accurately reflect long-term retention and receptor recycling, the internaliz
 \end{align}
 (Where $M_{bound}(t)$ tracks total attached molarity, and cell lysis eventually releases internalized activity back into the interstitial space).
 
-\textbf{2. Transport and Continuous Radiobiology (Continuous Linear-Quadratic (cLQ) model and Hypoxia):}
-Instead of a simple linear approximation or discrete post-hoc Biologically Effective Dose (BED) calculations, the ODE natively splits DNA damage into a transient \textbf{Sublethal Damage ($S$)} pool subject to continuous enzymatic repair, and the irreversible accumulation of \textbf{Lethal Lesions ($L$)}. To account for spatial hypoxia, the physical dose rate $\dot{D}(\mathbf{r}, t)$ is dynamically scaled by a neural-learned Oxygen Enhancement Ratio ($OER$).
+\textbf{2. Transport and Continuous Radiobiology (Continuous LQ and Hypoxia):}
+Instead of a simple linear approximation or discrete post-hoc BED calculations, the ODE natively splits DNA damage into a transient \textbf{Sublethal Damage ($S$)} pool subject to continuous enzymatic repair, and the irreversible accumulation of \textbf{Lethal Lesions ($L$)}. To account for spatial hypoxia, the physical dose rate $\dot{D}(\mathbf{r}, t)$ is dynamically scaled by a neural-learned Oxygen Enhancement Ratio ($OER$).
 \begin{align}
     \frac{dTIA}{dt} &= A_{free} + A_{surface} + A_{endo} + A_{lyso} + v_b(\mathbf{r}) \cdot V_{voxel} \cdot \frac{A_{blood}}{V_{blood}} \\
     \dot{D}_{eff}(\mathbf{r}, t) &= \frac{\dot{D}(\mathbf{r}, t)}{OER(\mathbf{r})} \\
@@ -261,7 +259,7 @@ The UDE establishes a non-linear ODE structure for receptor mapping:
 \end{enumerate}
 
 
-\subsection{Group 4: Continuous Radiobiology (continuous Linear-Quadratic (cLQ) model and SciML Hypoxia)}
+\subsection{Group 4: Continuous Radiobiology (cLQ and SciML Hypoxia)}
 
 Tracking the continuous formation of lethal lesions natively:
 \begin{equation}
@@ -276,7 +274,7 @@ Tracking the continuous formation of lethal lesions natively:
 \end{enumerate}
 
 \subsection{Group 5: SciML Radiation Transport \& Neural Corrector}
-Deriving absorbed dose natively couples Fast Fourier Transform (FFT) convolutions with unscattered Boltzmann ray-tracing and AI correctors:
+Deriving absorbed dose natively couples FFT convolutions with unscattered Boltzmann ray-tracing and AI correctors:
 \begin{align}
     E_{base,total}(\mathbf{r}) &= TIA \ast (\bar{E}_{\beta} K_{\beta,lung} + \bar{E}_{\gamma} K_{\gamma,water}) \\
     \vec{\Phi}_{ray}(\mathbf{r}) &= \underbrace{\frac{1}{\iiint_V TIA(\mathbf{r}') \, d^3\mathbf{r}'}}_{\text{Activity Normalization}} \iiint_{V} \underbrace{\frac{TIA(\mathbf{r}')}{4\pi |\mathbf{r} - \mathbf{r}'|^2}}_{\text{Inverse-Square}} \underbrace{\exp\left( -\int_{\mathbf{r}'}^{\mathbf{r}} \mu(\mathbf{l}) \, dl \right)}_{\text{Attenuation}} \underbrace{\frac{\mathbf{r} - \mathbf{r}'}{|\mathbf{r} - \mathbf{r}'|}}_{\text{Direction } \mathbf{\hat{\Omega}}} \, d^3\mathbf{r}' \label{eq:ray_tracing} \\
@@ -328,25 +326,6 @@ Because the neural network is embedded directly inside deterministic physical eq
 
 \subsection{Creation of Synthetic Data}
 To train the neural corrector without the confounding variables and overlapping noise of real clinical data, synthetic datasets must be meticulously engineered subsystem-by-subsystem to simulate specific physical, biological, and hardware phenomena:
-\caption{Full-Body Performance and Computational Efficiency Comparison}
-\label{tab:dosimetry_comparison}
-\begin{tabular}{lccc}
-\hline
-\textbf{Model} & \textbf{Mean Pearson ($r$)} & \textbf{MAE (Gy)} & \textbf{Inference (s)} \\ \hline
-Analytical Baseline (Static) & 0.8249 & 700.43 & \textbf{0.59} \\
-DblurDoseNet (PyTorch) & 0.5566 & 1102.34 & 7.76 \\
-CNN Improved (Lux/Julia) & 0.9434 & 485.20 & 8.50 \\
-Spect0Net (PyTorch) & 0.6124 & 955.12 & 8.12 \\
-SemiDose (PyTorch) & 0.6401 & 912.88 & 7.95 \\
-Original UDE (2-Branch) & 0.9031 & 405.77 & 85.42 \\
-\textbf{UDE IMPROVED (Triple-Branch)} & \textbf{0.9221} & \textbf{359.49} & \textbf{100.87} \\ \hline
-\end{tabular}
-\end{table}
-
-Quantitative analysis reveals that while purely data-driven CNN architectures (e.g., DblurDoseNet, CNN Improved) offer significant speed advantages due to their feed-forward nature, they lack the physical constraints necessary for state-of-the-art accuracy. The UDE IMPROVED model, while more computationally intensive ($\sim 101$s for full-body inference), provides the highest clinical fidelity by explicitly integrating mechanistic dose deposition laws.
-
-\subsection{Input and Output Specification}
-To ensure robust generalization and prevent data leakage, the model relies strictly on patient-specific data accessible during standard clinical workflows.
 
 \begin{itemize}
     \item \textbf{Anatomical Geometry \& CT Artifacts (Group 1):} Create 3D NumPy arrays using geometric primitives (e.g., a $\rho=1.0 \text{ g/cm}^3$ water cylinder surrounded by $\rho=0.3 \text{ g/cm}^3$ lung tissue). Simulate scanner limitations by adding zero-mean Gaussian noise scaled by density (mimicking photon starvation), applying a 3D Gaussian Blur to simulate Partial Volume Effects (PVE) at tissue boundaries, and using an inverted 3D parabolic function in the center of dense objects to artificially induce Beam Hardening (cupping) artifacts.

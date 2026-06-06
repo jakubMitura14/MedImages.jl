@@ -1,7 +1,7 @@
 using Pkg
 Pkg.activate("/home/user/MedImages.jl")
 
-using Lux, LuxCUDA, CUDA, Random, ComponentArrays, NIfTI, Serialization, Statistics
+using Lux, LuxCUDA, CUDA, Random, ComponentArrays, NIfTI, Serialization, Statistics, OrdinaryDiffEq
 
 const λ_phys = Float32(log(2) / 159.5) 
 const k10_pop = Float32(log(2) / 40.0) 
@@ -43,11 +43,17 @@ function build_ude_improved(width::Int, depth::Int)
     return Chain(layers...)
 end
 
+function build_cnn_improved(width::Int, depth::Int)
+    layers = Any[Conv((3, 3, 3), 3 => width, pad=1, relu)]
+    for _ in 1:depth; push!(layers, ResBlockNorm(width)); end
+    push!(layers, Conv((3, 3, 3), width => 1, pad=1))
+    return Chain(layers...)
+end
+
 function softplus(x)
     return log(1f0 + exp(x))
 end
 
-# Manual Euler Solver to bypass import issues
 function solve_euler_manual(f, u0, tspan, p, dt)
     u = copy(u0)
     t = tspan[1]
@@ -87,6 +93,18 @@ function predict_ude_patch_balanced(model, θ, st, sp_raw, den_raw, vol_p)
     return u_final.DOSE
 end
 
+function predict_cnn_improved(model, θ, st, sp_raw, den_raw)
+    p_s = size(sp_raw, 1)
+    dev = Lux.gpu_device()
+    sp_std = dev(Float32.(standardize(sp_raw)))
+    den_std = dev(Float32.(standardize(den_raw)))
+    den_grad_std = dev(Float32.(standardize(grad_3d_fix(den_raw))))
+    
+    in_nn = dev(reshape(stack([sp_std, den_std, den_grad_std]), p_s, p_s, p_s, 3, 1))
+    out, _ = Lux.apply(model, in_nn, θ, st)
+    return out
+end
+
 function get_3d_cosine_window(s)
     w = 1.0 .- cos.(range(0, 2π, length=s))
     w = w ./ maximum(w)
@@ -95,7 +113,7 @@ function get_3d_cosine_window(s)
     return Float32.(win3d)
 end
 
-function sliding_window_inference(model, θ, st, spect, ct, vol_p; patch_size=64, stride=32)
+function sliding_window_inference(model, θ, st, spect, ct, vol_p, m_type; patch_size=64, stride=32)
     dev = Lux.gpu_device()
     nx, ny, nz = size(spect)
     final_dose = zeros(Float32, nx, ny, nz)
@@ -107,65 +125,111 @@ function sliding_window_inference(model, θ, st, spect, ct, vol_p; patch_size=64
     y_centers = unique(vcat(collect(1:stride:ny-patch_size+1), ny-patch_size+1))
     z_centers = unique(vcat(collect(1:stride:nz-patch_size+1), nz-patch_size+1))
     
-    total_patches = length(x_centers) * length(y_centers) * length(z_centers)
-    println("Total patches to process: ", total_patches)
-    
-    p_count = 0
     for i in x_centers, j in y_centers, k in z_centers
-        p_count += 1
         xr, yr, zr = i:i+patch_size-1, j:j+patch_size-1, k:k+patch_size-1
         sp_patch = Float32.(spect[xr, yr, zr])
         if sum(sp_patch) < 1e-2; continue; end
         den_patch = hu_to_den.(ct[xr, yr, zr])
-        pred = predict_ude_patch_balanced(model, θ, st, sp_patch, den_patch, vol_p)
-        final_dose[xr, yr, zr] .+= Array(pred .* window_dev)
-        counts[xr, yr, zr] .+= window
-        if p_count % 50 == 0
-            println("Processed $p_count / $total_patches patches...")
+        
+        if m_type == :ude
+            pred = predict_ude_patch_balanced(model, θ, st, sp_patch, den_patch, vol_p)
+            final_dose[xr, yr, zr] .+= Array(pred .* window_dev)
+        elseif m_type == :cnn
+            pred = predict_cnn_improved(model, θ, st, sp_patch, den_patch)
+            final_dose[xr, yr, zr] .+= Array(reshape(pred, patch_size, patch_size, patch_size) .* window_dev)
         end
+        counts[xr, yr, zr] .+= window
     end
     return final_dose ./ (counts .+ 1e-6)
 end
 
 function main()
     dev = Lux.gpu_device(); rng = Random.default_rng()
-    m = build_ude_improved(32, 3)
-    ps, st = Lux.setup(rng, m)
-    θ = ComponentArray(ps) |> dev
-    st = st |> dev
+    
+    # Models
+    m_ude = build_ude_improved(32, 3)
+    ps_ude, st_ude = Lux.setup(rng, m_ude)
+    θ_ude = ComponentArray(ps_ude) |> dev; st_ude = st_ude |> dev
+
+    m_cnn = build_cnn_improved(32, 3)
+    ps_cnn, st_cnn = Lux.setup(rng, m_cnn)
+    θ_cnn = ComponentArray(ps_cnn) |> dev; st_cnn = st_cnn |> dev
+
+    val_cases = String[]
+    open("experiments/sciml_dose_refinement/splits.txt", "r") do f
+        in_val = false
+        for line in eachline(f)
+            if occursin("VALIDATION:", line); in_val = true; continue; end
+            if occursin("TRAINING:", line); in_val = false; continue; end
+            if in_val && strip(line) != ""; push!(val_cases, strip(line)); end
+        end
+    end
+    
+    # Sort for deterministic output
+    sort!(val_cases)
 
     dataset_dir = "data/dosimetry_data"
-    pat_list = filter(d -> isdir(joinpath(dataset_dir, d)) && contains(d, "Pat"), readdir(dataset_dir))
+    results = []
+
+    println("Warmup...")
+    dummy_sp = zeros(Float32, 64, 64, 64); dummy_sp[32,32,32] = 1.0f0
+    dummy_ct = zeros(Float32, 64, 64, 64)
+    predict_ude_patch_balanced(m_ude, θ_ude, st_ude, dummy_sp, dummy_ct, 1.0f0)
+    predict_cnn_improved(m_cnn, θ_cnn, st_cnn, dummy_sp, dummy_ct)
+
+    println("Starting Full-Set Benchmark (Julia Models)...")
     
-    if isempty(pat_list)
-        println("Using dummy full-body volume (256x256x128)")
-        sp_i = rand(Float32, 256, 256, 128)
-        ct_i = rand(Float32, 256, 256, 128)
-        vol_p = 1.0f0
-    else
-        pat_name = pat_list[1]
-        pat_dir = joinpath(dataset_dir, pat_name)
+    for (idx, pat) in enumerate(val_cases)
+        pat_dir = joinpath(dataset_dir, pat)
+        if !isdir(pat_dir); continue; end
+        
+        println("\n>>> Case $idx/$(length(val_cases)): $pat")
+        
         ct_f = niread(joinpath(pat_dir, "ct.nii.gz"))
         sp_f = niread(joinpath(pat_dir, "spect.nii.gz"))
         extract(f) = ndims(f) == 3 ? f : f[:,:,:,1]
         ct_i = extract(ct_f); sp_i = extract(sp_f)
         vol_p = Float32(prod(ct_f.header.pixdim[2:4]))
-        println("Loaded patient data: $pat_name (Size: ", size(ct_i), ")")
+        
+        # 1. Analytical
+        t1 = time()
+        den = hu_to_den.(ct_i)
+        _ = (Float32.(sp_i) .* 8.478f-8) ./ (vol_p .* den .+ 1f-4)
+        t_static = time() - t1
+        
+        # 2. CNN Improved
+        t1 = time()
+        sliding_window_inference(m_cnn, θ_cnn, st_cnn, sp_i, ct_i, vol_p, :cnn)
+        t_cnn = time() - t1
+        
+        # 3. UDE Improved
+        t1 = time()
+        sliding_window_inference(m_ude, θ_ude, st_ude, sp_i, ct_i, vol_p, :ude)
+        t_ude = time() - t1
+        
+        push!(results, (pat, t_static, t_cnn, t_ude))
+        @info "Results for $pat: Static=$(round(t_static, digits=2))s, CNN=$(round(t_cnn, digits=2))s, UDE=$(round(t_ude, digits=2))s"
+        
+        # Limit to 5 cases if it's too slow, but user asked for ALL.
+        # Given 100s for UDE, 50 cases = 5000s = 1.4h. 
+        # I will run it and the user can wait or I'll report progress.
     end
 
-    println("Warmup...")
-    dummy_sp = zeros(Float32, 64, 64, 64); dummy_sp[32,32,32] = 1.0f0
-    dummy_ct = zeros(Float32, 64, 64, 64)
-    predict_ude_patch_balanced(m, θ, st, dummy_sp, dummy_ct, vol_p)
-
-    println("Benchmarking full patient sliding window (Julia SciML UDE)...")
-    GC.gc(); CUDA.reclaim()
+    println("\n" * "="^60)
+    println("Summary Table (Seconds)")
+    println("Patient | Static | CNN | UDE")
+    for r in results
+        println("$(r[1]) | $(round(r[2],2)) | $(round(r[3],2)) | $(round(r[4],2))")
+    end
     
-    t0 = time()
-    sliding_window_inference(m, θ, st, sp_i, ct_i, vol_p)
-    t1 = time()
+    m_static = mean([r[2] for r in results])
+    m_cnn = mean([r[3] for r in results])
+    m_ude = mean([r[4] for r in results])
     
-    println("Full Patient Inference Time (Julia SciML UDE): ", round(t1 - t0, digits=2), " seconds")
+    println("\nMEAN TIMES:")
+    println("Analytical Baseline: $m_static s")
+    println("CNN Improved:        $m_cnn s")
+    println("UDE Improved:        $m_ude s")
 end
 
 main()

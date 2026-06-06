@@ -40,7 +40,7 @@ const IMG_SIZE = 32       # 32×32×32 voxels
 const N_TRAIN = 100       # training samples
 const N_TEST = 20         # test samples
 const ANGLE_RANGE = 30.0  # ±30 degrees
-const EPOCHS = 500
+const EPOCHS = 100
 const LR = 5e-4
 
 # Fixed datetime to avoid Zygote issues with Dates.now()
@@ -218,10 +218,12 @@ end
 # 4. Training Loop
 # ═══════════════════════════════════════════════════════════════════════════════
 
-function compute_loss(model, x_5d, img_3d, imagePrim)
+function compute_metrics(model, x_5d, img_3d, imagePrim)
     pred_angles = vec(model(x_5d))
     reconstructed = diff_rotate_3d(img_3d, pred_angles)
-    return sum((reconstructed .- imagePrim) .^ 2) / length(imagePrim)
+    mse = sum((reconstructed .- imagePrim) .^ 2) / length(imagePrim)
+    mae = sum(abs.(reconstructed .- imagePrim)) / length(imagePrim)
+    return mse, mae
 end
 
 const OUTPUT_ARTIFACT_DIR = "data/validation"
@@ -246,11 +248,11 @@ function main()
     # Save the uncorrected (initial) rotated image for test sample 1
     MedImages.Load_and_save.create_nii_from_medimage(make_medimage(test_imgs[:,:,:,1,1]), joinpath(OUTPUT_ARTIFACT_DIR, "uncorrected.nii.gz"))
 
-    baseline_loss = mean([
+    baseline_mse = mean([
         sum((train_imgs[:,:,:,1,i] .- imagePrim).^2) / length(imagePrim)
         for i in 1:N_TRAIN
     ])
-    @printf("  Baseline L2 loss (no correction): %.6f\n", baseline_loss)
+    @printf("  Baseline L2 loss (no correction): %.6f\n", baseline_mse)
 
     println("\n[2/4] Building CNN + MLP model...")
     model = build_model()
@@ -258,42 +260,54 @@ function main()
 
     println("\n[3/4] Training ($(EPOCHS) epochs)...")
     
-    # Track endpoints
+    # Track metrics
     endpoints_history = []
+    history = []
     
-    test_history = Float32[]
     for epoch in 1:EPOCHS
         perm = randperm(N_TRAIN)
-        epoch_loss = 0.0f0
+        epoch_mse = 0.0f0
+        epoch_mae = 0.0f0
         for i in perm
             x_5d = train_imgs[:,:,:,:,i:i]
             img_3d = train_imgs[:,:,:,1,i]
-            loss_val, grads = Flux.withgradient(model) do m
-                compute_loss(m, x_5d, img_3d, imagePrim)
+            (loss_val, epoch_m), grads = Flux.withgradient(model) do m
+                pred_angles = vec(m(x_5d))
+                reconstructed = diff_rotate_3d(img_3d, pred_angles)
+                mse = sum((reconstructed .- imagePrim) .^ 2) / length(imagePrim)
+                mae = sum(abs.(reconstructed .- imagePrim)) / length(imagePrim)
+                return mse, mae
             end
             Flux.update!(opt_state, model, grads[1])
-            epoch_loss += loss_val
+            epoch_mse += loss_val
+            epoch_mae += epoch_m
         end
-        avg_train = epoch_loss / N_TRAIN
+        avg_train_mse = epoch_mse / N_TRAIN
+        avg_train_mae = epoch_mae / N_TRAIN
         
-        # Compute endpoints for visualization
+        # Compute endpoints and test metrics for visualization
         x_5d_1 = test_imgs[:,:,:,:,1:1]
         img_3d_1 = test_imgs[:,:,:,1,1]
         pred_angles_1 = vec(model(x_5d_1))
         reconstructed_1 = diff_rotate_3d(img_3d_1, pred_angles_1)
         p1, p2 = extract_endpoints(reconstructed_1)
         push!(endpoints_history, (epoch, p1, p2))
+
+        test_mse = 0.0f0
+        test_mae = 0.0f0
+        for i in 1:N_TEST
+            x_5d = test_imgs[:,:,:,:,i:i]
+            img_3d = test_imgs[:,:,:,1,i]
+            m_mse, m_mae = compute_metrics(model, x_5d, img_3d, imagePrim)
+            test_mse += m_mse
+            test_mae += m_mae
+        end
+        avg_test_mse = test_mse / N_TEST
+        avg_test_mae = test_mae / N_TEST
+        push!(history, (epoch, avg_train_mse, avg_train_mae, avg_test_mse, avg_test_mae))
         
         if epoch == 1 || epoch % 10 == 0 || epoch == EPOCHS
-            test_loss = 0.0f0
-            for i in 1:N_TEST
-                x_5d = test_imgs[:,:,:,:,i:i]
-                img_3d = test_imgs[:,:,:,1,i]
-                test_loss += compute_loss(model, x_5d, img_3d, imagePrim)
-            end
-            avg_test = test_loss / N_TEST
-            push!(test_history, avg_test)
-            @printf("  Epoch %-4d | Train Loss: %.6f | Test Loss: %.6f\n", epoch, avg_train, avg_test)
+            @printf("  Epoch %-4d | Train MSE: %.6f | Test MSE: %.6f | Test MAE: %.6f\n", epoch, avg_train_mse, avg_test_mse, avg_test_mae)
         end
     end
 
@@ -304,8 +318,15 @@ function main()
     reconstructed_final = diff_rotate_3d(img_3d_1, pred_angles_1)
     MedImages.Load_and_save.create_nii_from_medimage(make_medimage(reconstructed_final), joinpath(OUTPUT_ARTIFACT_DIR, "reconstructed.nii.gz"))
 
-    # Save endpoints history
-    println("\n[4/4] Saving endpoints history...")
+    # Save history
+    println("\n[4/4] Saving history...")
+    open(joinpath(OUTPUT_ARTIFACT_DIR, "loss_history.csv"), "w") do io
+        println(io, "epoch,train_mse,train_mae,test_mse,test_mae")
+        for (e, tr_mse, tr_mae, ts_mse, ts_mae) in history
+            println(io, "$e,$tr_mse,$tr_mae,$ts_mse,$ts_mae")
+        end
+    end
+    
     open(joinpath(OUTPUT_ARTIFACT_DIR, "endpoints.csv"), "w") do io
         println(io, "epoch,p1x,p1y,p1z,p2x,p2y,p2z")
         for (epoch, p1, p2) in endpoints_history

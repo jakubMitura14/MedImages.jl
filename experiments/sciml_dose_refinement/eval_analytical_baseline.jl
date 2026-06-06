@@ -41,6 +41,7 @@ function evaluate_analytical_baseline()
         # Analytical Baseline Equation
         pred = (spect .* DOSE_CONV) ./ (vol .* den .+ 1f-4)
 
+        println("Debug: $pat | spect max=$(maximum(spect)) | pred max=$(maximum(pred)) | target max=$(maximum(target))")
         c = cor(reshape(pred, :), reshape(target, :))
         m = mean(abs.(pred .- target))
         push!(pearsons, c); push!(maes, m)
